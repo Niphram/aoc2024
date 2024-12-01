@@ -1,48 +1,65 @@
 package main
 
 import "core:fmt"
+import "core:mem"
 import "core:os"
 import "core:slice"
 import "core:strconv"
 import "core:strings"
 import "core:unicode"
 
+import "../utils"
+
 main :: proc() {
-	input := os.read_entire_file("day-01/input.txt", context.allocator) or_else os.exit(1)
-	defer delete(input, context.allocator)
+	input := os.read_entire_file("day-01/input.txt") or_else panic("Could not read input file")
+	defer delete(input)
 
-	it := string(input)
+	input_string := string(input)
 
+	// Input lists
 	left_list: [dynamic]int
-	defer delete(left_list)
 	right_list: [dynamic]int
+	defer delete(left_list)
 	defer delete(right_list)
 
-	for line in strings.split_lines_iterator(&it) {
-		parts := strings.split(line, "   ") or_else os.exit(-1)
+	// Parse input
+	for line in utils.split_lines_iterator_trim(&input_string) {
+		left, right := utils.split_once(line, "   ") or_else panic("Could not parse input")
 
-		append(&left_list, strconv.atoi(parts[0]))
-		append(&right_list, strconv.atoi(parts[1]))
+		append(&left_list, strconv.atoi(left))
+		append(&right_list, strconv.atoi(right))
 	}
 
+	// Sort lists
 	slice.sort(left_list[:])
 	slice.sort(right_list[:])
 
-	zipped := soa_zip(l = left_list[:], r = right_list[:])
-
+	// Part 1
 	{
 		diff_sum: int
-		for pair in zipped {
+		for pair in soa_zip(l = left_list[:], r = right_list[:]) {
 			diff_sum += abs(pair.l - pair.r)
 		}
-		fmt.println(diff_sum)
+
+		fmt.printfln("Part 1: %i", diff_sum)
 	}
-	//// PART 2
+
+	// Part 2
 	{
+
+		// Count all numbers in right map
+		count_map: map[int]int
+		defer delete(count_map)
+		for r in right_list {
+			count_map[r] += 1
+		}
+
+		// Sum totals
 		total: int
 		for l in left_list {
-			total += l * slice.count(right_list[:], l)
+			total += l * count_map[l]
 		}
-		fmt.println(total)
+
+		fmt.printfln("Part 2: %i", total)
 	}
 }

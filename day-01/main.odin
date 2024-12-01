@@ -49,10 +49,6 @@ part_2 :: proc(input: string) -> (result: int) {
 	res := parse_input(&input_copy)
 	defer delete(res)
 
-	// Sort slices
-	slice.sort(res.x[:len(res)])
-	slice.sort(res.y[:len(res)])
-
 	// Count all numbers in right list
 	count_map := make(map[int]int)
 	defer delete(count_map)

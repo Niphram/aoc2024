@@ -1,12 +1,10 @@
 package main
 
 import "core:fmt"
-import "core:mem"
 import "core:os"
 import "core:slice"
 import "core:strconv"
 import "core:strings"
-import "core:unicode"
 
 import "../utils"
 
@@ -15,12 +13,14 @@ main :: proc() {
 	defer delete(input)
 
 	input_string := string(input)
+	line_count := strings.count(input_string, "\n")
 
 	// Input lists
-	left_list: [dynamic]int
-	right_list: [dynamic]int
+	left_list := make([dynamic]int, 0, line_count)
 	defer delete(left_list)
+	right_list := make([dynamic]int, 0, line_count)
 	defer delete(right_list)
+
 
 	// Parse input
 	for line in utils.split_lines_iterator_trim(&input_string) {
@@ -46,9 +46,8 @@ main :: proc() {
 
 	// Part 2
 	{
-
-		// Count all numbers in right map
-		count_map: map[int]int
+		// Count all numbers in right list
+		count_map := make(map[int]int)
 		defer delete(count_map)
 		for r in right_list {
 			count_map[r] += 1

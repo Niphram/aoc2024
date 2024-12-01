@@ -26,15 +26,16 @@ parse_input :: proc(s: ^string) -> #soa[dynamic][2]int {
 }
 
 part_1 :: proc(input: string) -> (result: int) {
-	my_input := input
+	input_copy := input
 
-	res := parse_input(&my_input)
+	res := parse_input(&input_copy)
 	defer delete(res)
 
 	// Sort slices
 	slice.sort(res.x[:len(res)])
 	slice.sort(res.y[:len(res)])
 
+	// Sum of absolute differences
 	for pair in res {
 		result += abs(pair.x - pair.y)
 	}
@@ -43,9 +44,9 @@ part_1 :: proc(input: string) -> (result: int) {
 }
 
 part_2 :: proc(input: string) -> (result: int) {
-	my_input := input
+	input_copy := input
 
-	res := parse_input(&my_input)
+	res := parse_input(&input_copy)
 	defer delete(res)
 
 	// Sort slices

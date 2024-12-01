@@ -3,62 +3,95 @@ package main
 import "core:fmt"
 import "core:os"
 import "core:slice"
-import "core:strconv"
-import "core:strings"
+import "core:testing"
+import "core:unicode"
 
-import "../utils"
+import "../parser"
+
+parse_input :: proc(s: ^string) -> #soa[dynamic][2]int {
+	pair_parser :: proc(s: ^string) -> (pair: [2]int, ok := true) {
+		pair.x = parser.integer(s) or_return
+		parser.take_while1(unicode.is_space, s) or_return
+		pair.y = parser.integer(s) or_return
+
+		return
+	}
+
+	result :=
+		parser.soa_seperated_list0(parser.newline, pair_parser, s) or_else panic(
+			"Could not parse input!",
+		)
+
+	return result
+}
+
+part_1 :: proc(input: string) -> (result: int) {
+	my_input := input
+
+	res := parse_input(&my_input)
+	defer delete(res)
+
+	// Sort slices
+	slice.sort(res.x[:len(res)])
+	slice.sort(res.y[:len(res)])
+
+	for pair in res {
+		result += abs(pair.x - pair.y)
+	}
+
+	return
+}
+
+part_2 :: proc(input: string) -> (result: int) {
+	my_input := input
+
+	res := parse_input(&my_input)
+	defer delete(res)
+
+	// Sort slices
+	slice.sort(res.x[:len(res)])
+	slice.sort(res.y[:len(res)])
+
+	// Count all numbers in right list
+	count_map := make(map[int]int)
+	defer delete(count_map)
+	for pair in res {
+		count_map[pair.y] += 1
+	}
+
+	// Sum totals
+	for pair in res {
+		result += pair.x * count_map[pair.x]
+	}
+
+	return
+}
 
 main :: proc() {
 	input := os.read_entire_file("day-01/input.txt") or_else panic("Could not read input file")
 	defer delete(input)
 
 	input_string := string(input)
-	line_count := strings.count(input_string, "\n")
 
-	// Input lists
-	left_list := make([dynamic]int, 0, line_count)
-	defer delete(left_list)
-	right_list := make([dynamic]int, 0, line_count)
-	defer delete(right_list)
+	fmt.printfln("Part 1: %i", part_1(input_string))
+	fmt.printfln("Part 2: %i", part_2(input_string))
+}
+
+EXAMPLE_INPUT :: `3   4
+4   3
+2   5
+1   3
+3   9
+3   3
+`
 
 
-	// Parse input
-	for line in utils.split_lines_iterator_trim(&input_string) {
-		left, right := utils.split_once(line, "   ") or_else panic("Could not parse input")
+@(test)
+part1_test :: proc(t: ^testing.T) {
+	testing.expect_value(t, part_1(EXAMPLE_INPUT), 11)
+}
 
-		append(&left_list, strconv.atoi(left))
-		append(&right_list, strconv.atoi(right))
-	}
-
-	// Sort lists
-	slice.sort(left_list[:])
-	slice.sort(right_list[:])
-
-	// Part 1
-	{
-		diff_sum: int
-		for pair in soa_zip(l = left_list[:], r = right_list[:]) {
-			diff_sum += abs(pair.l - pair.r)
-		}
-
-		fmt.printfln("Part 1: %i", diff_sum)
-	}
-
-	// Part 2
-	{
-		// Count all numbers in right list
-		count_map := make(map[int]int)
-		defer delete(count_map)
-		for r in right_list {
-			count_map[r] += 1
-		}
-
-		// Sum totals
-		total: int
-		for l in left_list {
-			total += l * count_map[l]
-		}
-
-		fmt.printfln("Part 2: %i", total)
-	}
+@(test)
+part2_test :: proc(t: ^testing.T) {
+	testing.expect_value(t, part_2(EXAMPLE_INPUT), 31)
 }

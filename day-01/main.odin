@@ -6,19 +6,19 @@ import "core:slice"
 import "core:testing"
 import "core:unicode"
 
-import "../parser"
+import "../parse"
 
 parse_input :: proc(s: ^string) -> #soa[dynamic][2]int {
 	pair_parser :: proc(s: ^string) -> (pair: [2]int, ok := true) {
-		pair.x = parser.integer(s) or_return
-		parser.take_while1(unicode.is_space, s) or_return
-		pair.y = parser.integer(s) or_return
+		pair.x = parse.exec(parse.integer, s) or_return
+		parse.exec(parse.take_while(1, unicode.is_space), s) or_return
+		pair.y = parse.exec(parse.integer, s) or_return
 
 		return
 	}
 
 	result :=
-		parser.soa_seperated_list0(parser.newline, pair_parser, s) or_else panic(
+		parse.exec(parse.soa_seperated_list0(parse.tag("\n"), pair_parser), s) or_else panic(
 			"Could not parse input!",
 		)
 

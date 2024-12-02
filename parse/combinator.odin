@@ -1,4 +1,4 @@
-package parser
+package parse
 
 /*
 Applies the `parser` exactly `Count` times.
@@ -95,20 +95,25 @@ seperated_list1 :: proc(
 Same as `seperated_list0`, but the result will be a struct of arrays
 */
 soa_seperated_list0 :: proc(
-	seperator: proc(s: ^string) -> (result: $S, ok: bool),
-	parser: proc(s: ^string) -> (result: $R, ok: bool),
-	s: ^string,
-) -> (
-	result: #soa[dynamic]R,
-	ok := true,
-) {
-	for {
-		parsed := parser(s) or_break
-		append(&result, parsed)
-		seperator(s) or_break
-	}
+	seperator: $S/Parser($SR, $SC),
+	parser: $P/Parser($PR, $PC),
+) -> Parser(#soa[dynamic]PR, struct {
+			s: S,
+			p: P,
+		}) {
+	return {{seperator, parser}, proc(ctx: struct {
+				s: S,
+				p: P,
+			}, s: ^string) -> (result: #soa[dynamic]R, ok := true) {
+			for {
+				parsed := exec(ctx.p) or_break
+				append(&result, parsed)
+				exec(ctx.s) or_break
+			}
 
-	return
+			return
+		}}
+
 }
 
 /*

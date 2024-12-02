@@ -1,7 +1,5 @@
 package parser
 
-import "core:strings"
-
 /*
 Applies the `parser` exactly `Count` times.
 */

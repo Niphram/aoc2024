@@ -6,6 +6,7 @@ import "core:strings"
 import "core:testing"
 
 import "../utils"
+import "../utils/grid"
 
 part_1 :: proc(input: string) -> (count: int) {
 	line_len := strings.index_rune(input, '\n') + 1
@@ -29,19 +30,19 @@ part_1 :: proc(input: string) -> (count: int) {
 	return
 }
 
-part_2 :: proc(input: string) -> (count: int) {
-	grid := utils.grid_from_string(input)
+part_2 :: proc(input: []u8) -> (count: int) {
+	g := grid.from(input, '\n')
 
-	for x in 1 ..< (grid.width - 1) {
-		for y in 1 ..< (grid.height - 1) {
-			if utils.index_grid(grid, x, y) != 'A' {
+	for x in 1 ..< (g.width - 1) {
+		for y in 1 ..< (g.height - 1) {
+			if grid.get(g, x, y) != 'A' {
 				continue
 			}
 
-			tl := utils.index_grid(grid, x - 1, y - 1)
-			tr := utils.index_grid(grid, x + 1, y - 1)
-			bl := utils.index_grid(grid, x - 1, y + 1)
-			br := utils.index_grid(grid, x + 1, y + 1)
+			tl := grid.get(g, x - 1, y - 1)
+			tr := grid.get(g, x + 1, y - 1)
+			bl := grid.get(g, x - 1, y + 1)
+			br := grid.get(g, x + 1, y + 1)
 
 			if (tl + br) != ('M' + 'S') {
 				continue
@@ -62,13 +63,11 @@ main :: proc() {
 	input := os.read_entire_file("day-04/input.txt") or_else panic("Could not read input file")
 	defer delete(input)
 
-	input_string := string(input)
-
-	fmt.printfln("Part 1: %i", part_1(input_string))
-	fmt.printfln("Part 2: %i", part_2(input_string))
+	fmt.printfln("Part 1: %i", part_1(string(input)))
+	fmt.printfln("Part 2: %i", part_2(input))
 }
 
-EXAMPLE_INPUT :: `MMMSXXMASM
+EXAMPLE_INPUT: string : `MMMSXXMASM
 MSAMXMSMSA
 AMXSXMAAMM
 MSAMASMSMX
@@ -88,5 +87,5 @@ part1_test :: proc(t: ^testing.T) {
 
 @(test)
 part2_test :: proc(t: ^testing.T) {
-	testing.expect_value(t, part_2(EXAMPLE_INPUT), 9)
+	testing.expect_value(t, part_2(transmute([]u8)EXAMPLE_INPUT), 9)
 }

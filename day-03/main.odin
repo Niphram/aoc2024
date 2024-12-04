@@ -1,56 +1,19 @@
 package main
 
 import "core:fmt"
-import "core:math"
 import "core:os"
-import "core:slice"
-import "core:strconv"
-import "core:strings"
 import "core:testing"
-import "core:unicode"
 
-import "../parser"
-
-index :: proc(s, substr: string) -> (idx: int, ok: bool) {
-	idx = strings.index(s, substr)
-	ok = idx != -1
-
-	return
-}
-
-parse_number :: proc(s: ^string) -> (result: int, ok: bool) {
-	length := len(s^)
-
-	for r, i in s^ {
-		if !unicode.is_digit(r) {
-			length = i
-			break
-		}
-	}
-
-	ok = length != 0
-	result = strconv.atoi(s[:length])
-	s^ = s[length:]
-
-	return
-}
-
-consume_rune :: proc(s: ^string, r: rune) -> (ok := true) {
-	(rune(s[0]) == r) or_return
-	s^ = s[1:]
-
-	return
-}
+import "../parse"
 
 parse_mul_instr :: proc(s: ^string) -> (res: int, ok := true) {
 	for {
-		idx := index(s^, "mul(") or_return
-		s^ = s[idx + 4:]
+		parse.seek_after(s, "mul(") or_return
 
-		a := parse_number(s) or_continue
-		consume_rune(s, ',') or_continue
-		b := parse_number(s) or_continue
-		consume_rune(s, ')') or_continue
+		a := parse.read_number(s) or_continue
+		parse.take(s, ',') or_continue
+		b := parse.read_number(s) or_continue
+		parse.take(s, ')') or_continue
 
 		res = a * b
 		return
@@ -59,6 +22,7 @@ parse_mul_instr :: proc(s: ^string) -> (res: int, ok := true) {
 
 part_1 :: proc(input: string) -> (sum: int) {
 	input := input
+
 
 	for product in parse_mul_instr(&input) {
 		sum += product
@@ -73,7 +37,7 @@ part_2 :: proc(input: string) -> (sum: int) {
 	for part in strings.split_iterator(&input, "do()") {
 		part := part
 
-		disable := index(part, "don't()") or_else len(part)
+		disable := parse.first_index(part, "don't()") or_else len(part)
 		part = part[:disable]
 
 		for product in parse_mul_instr(&part) {

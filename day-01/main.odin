@@ -3,26 +3,30 @@ package main
 import "core:fmt"
 import "core:os"
 import "core:slice"
+import "core:strings"
 import "core:testing"
-import "core:unicode"
 
-import "../parser"
+import "../parse"
 
 parse_input :: proc(s: ^string) -> #soa[dynamic][2]int {
 	pair_parser :: proc(s: ^string) -> (pair: [2]int, ok := true) {
-		pair.x = parser.integer(s) or_return
-		parser.take_while1(unicode.is_space, s) or_return
-		pair.y = parser.integer(s) or_return
+		pair.x = parse.read_number(s) or_return
+		parse.take(s, "   ") or_return
+		pair.y = parse.read_number(s) or_return
 
 		return
 	}
 
-	result :=
-		parser.soa_seperated_list0(parser.newline, pair_parser, s) or_else panic(
-			"Could not parse input!",
-		)
+	list: #soa[dynamic][2]int
 
-	return result
+	for line in strings.split_lines_iterator(s) {
+		line := line
+
+		pair := pair_parser(&line) or_break
+		append(&list, pair)
+	}
+
+	return list
 }
 
 part_1 :: proc(input: string) -> (result: int) {

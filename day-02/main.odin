@@ -1,50 +1,39 @@
 package main
 
 import "core:fmt"
-import "core:math"
 import "core:os"
-import "core:slice"
+import "core:strings"
 import "core:testing"
-import "core:unicode"
 
-import "../parser"
+import "../parse"
 
-parse_input :: proc(s: ^string) -> [dynamic][dynamic]int {
-	space_parser :: proc(s: ^string) -> (consumed: string, ok: bool) {
-		return parser.tag(" ", s)
+parse_line :: proc(s: ^string) -> [dynamic]int {
+	list: [dynamic]int
+
+	for {
+		value := parse.read_number(s) or_break
+		append(&list, value)
+		parse.take(s, ' ') or_break
 	}
 
-	report_parser :: proc(s: ^string) -> (report: [dynamic]int, ok := true) {
-		report = parser.seperated_list1(space_parser, parser.integer, s) or_return
-
-		return
-	}
-
-	result :=
-		parser.seperated_list0(parser.newline, report_parser, s) or_else panic(
-			"Could not parse input!",
-		)
-
-	return result
+	return list
 }
 
 part_1 :: proc(input: string) -> (save_reports: int) {
-	input_copy := input
+	input := input
 
-	res := parse_input(&input_copy)
-	defer delete(res)
+	report_loop: for line in strings.split_lines_iterator(&input) {
+		line := line
 
-	report_loop: for report in res {
+		report := parse_line(&line)
 		defer delete(report)
 
 		sign := report[0] < report[1]
 		for idx in 0 ..< len(report) - 1 {
-			#no_bounds_check {
-				a, b := report[idx], report[idx + 1]
+			a, b := report[idx], report[idx + 1]
 
-				if sign != (a < b) || a == b || abs(a - b) > 3 {
-					continue report_loop
-				}
+			if sign != (a < b) || a == b || abs(a - b) > 3 {
+				continue report_loop
 			}
 		}
 
@@ -55,12 +44,12 @@ part_1 :: proc(input: string) -> (save_reports: int) {
 }
 
 part_2 :: proc(input: string) -> (save_reports: int) {
-	input_copy := input
+	input := input
 
-	res := parse_input(&input_copy)
-	defer delete(res)
+	for line in strings.split_lines_iterator(&input) {
+		line := line
 
-	for report in res {
+		report := parse_line(&line)
 		defer delete(report)
 
 		skip_idx :: proc(idx, skipped: int) -> int {
@@ -83,6 +72,7 @@ part_2 :: proc(input: string) -> (save_reports: int) {
 			save_reports += 1
 			break
 		}
+
 	}
 
 	return

@@ -1,5 +1,5 @@
 # Advent of Code 2024 in Odin
 
-![tests](https://github.com/niphram/aoc2024/actions/workflows/test.yml/badge.svg)
+[![Test](https://github.com/Niphram/aoc2024/actions/workflows/test.yml/badge.svg)](https://github.com/Niphram/aoc2024/actions/workflows/test.yml)
 
 Learning Odin this year

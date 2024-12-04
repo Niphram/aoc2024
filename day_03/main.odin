@@ -1,7 +1,8 @@
-package main
+package day_03
 
 import "core:fmt"
 import "core:os"
+import "core:strings"
 import "core:testing"
 
 import "../parse"

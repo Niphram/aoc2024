@@ -1,4 +1,4 @@
-package main
+package day_04
 
 import "core:fmt"
 import "core:os"

@@ -11,11 +11,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: laytan/setup-odin@v2
+      - name: Setup Odin
+        uses: laytan/setup-odin@v2.7.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          llvm-version: 18
 
-      - run: odin test tests -all-packages
+      - name: Run tests
+        run: odin test tests/ -all-packages

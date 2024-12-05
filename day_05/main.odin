@@ -1,5 +1,6 @@
 package day_05
 
+import "core:container/bit_array"
 import "core:fmt"
 import "core:os"
 import "core:slice"
@@ -9,47 +10,53 @@ import "core:testing"
 import "../parse"
 import "../utils"
 
-read_comma :: proc(s: ^string) -> (result: rune, ok: bool) {
-	return parse.take(s, ',')
-}
+parse_rules :: proc(rules: string) -> ^bit_array.Bit_Array {
+	prio_rules := bit_array.create(9999, 1111) or_else panic("Could not initialize bitset")
 
-part_1 :: proc(input: string) -> (middle_pages_sum: int) {
-	page_order_string, update_string :=
-		utils.split_once(input, "\n\n") or_else panic("Can't split input")
+	rules := rules
+	for rule in strings.split_lines_iterator(&rules) {
+		rule := rule
 
-	rules := make([dynamic][2]int)
-	defer delete(rules)
+		left := parse.read_number(&rule) or_break
+		parse.take(&rule, '|') or_break
+		right := parse.read_number(&rule) or_break
 
-	for line in strings.split_lines_iterator(&page_order_string) {
-		line := line
-
-		left := parse.read_number(&line) or_break
-		parse.take(&line, '|') or_break
-		right := parse.read_number(&line) or_break
-
-		append(&rules, [2]int{left, right})
+		bit_array.set(prio_rules, left * 100 + right)
 	}
 
+	return prio_rules
+}
 
-	check_update_loop: for update in strings.split_lines_iterator(&update_string) {
-		update := update
+parse_update :: proc(update: string) -> [dynamic]int {
+	update := update
 
-		pages: [dynamic]int
+	pages: [dynamic]int
+
+	for {
+		page := parse.read_number(&update) or_break
+		append(&pages, page)
+		parse.take(&update, ',')
+	}
+
+	return pages
+}
+
+
+part_1 :: proc(input: string) -> (middle_pages_sum: int) {
+	rules_string, update_string :=
+		utils.split_once(input, "\n\n") or_else panic("Can't split input")
+
+	rules := parse_rules(rules_string)
+	defer bit_array.destroy(rules)
+
+	update_loop: for update in strings.split_lines_iterator(&update_string) {
+		pages := parse_update(update)
 		defer delete(pages)
 
-		for {
-			page := parse.read_number(&update) or_break
-			append(&pages, page)
-			parse.take(&update, ',')
-		}
-
-
-		for page, i in pages {
-			for rule in rules {
-				if rule.x == page {
-					if slice.contains(pages[:i], rule.y) {
-						continue check_update_loop
-					}
+		for pl, i in pages {
+			for pr, j in pages[i + 1:] {
+				if bit_array.get(rules, pr * 100 + pl) {
+					continue update_loop
 				}
 			}
 		}
@@ -61,22 +68,12 @@ part_1 :: proc(input: string) -> (middle_pages_sum: int) {
 }
 
 part_2 :: proc(input: string) -> (middle_pages_sum: int) {
-	page_order_string, update_string :=
+	rules_string, update_string :=
 		utils.split_once(input, "\n\n") or_else panic("Can't split input")
 
-	rules := make([dynamic][2]int)
-	defer delete(rules)
 
-	for line in strings.split_lines_iterator(&page_order_string) {
-		line := line
-
-		left := parse.read_number(&line) or_break
-		parse.take(&line, '|') or_break
-		right := parse.read_number(&line) or_break
-
-		append(&rules, [2]int{left, right})
-	}
-
+	rules := parse_rules(rules_string)
+	defer bit_array.destroy(rules)
 
 	for update in strings.split_lines_iterator(&update_string) {
 		update := update
@@ -92,13 +89,11 @@ part_2 :: proc(input: string) -> (middle_pages_sum: int) {
 
 		invalid_update := false
 
-		page_loop: for page, i in pages {
-			for rule in rules {
-				if rule.x == page {
-					if slice.contains(pages[:i], rule.y) {
-						invalid_update = true
-						break page_loop
-					}
+		page_loop: for pl, i in pages {
+			for pr, j in pages[i + 1:] {
+				if bit_array.get(rules, pr * 100 + pl) {
+					invalid_update = true
+					break page_loop
 				}
 			}
 		}
@@ -111,15 +106,11 @@ part_2 :: proc(input: string) -> (middle_pages_sum: int) {
 		for !sorted {
 			sorted = true
 
-			for page, i in pages {
-				for rule in rules {
-					if rule.x == page {
-						if idx, ok := slice.linear_search(pages[:i], rule.y); ok {
-
-							pages[idx], pages[i] = pages[i], pages[idx]
-
-							sorted = false
-						}
+			for &pl, i in pages {
+				for &pr, j in pages[i + 1:] {
+					if bit_array.get(rules, pr * 100 + pl) {
+						pl, pr = pr, pl
+						sorted = false
 					}
 				}
 			}

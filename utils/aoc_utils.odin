@@ -17,17 +17,12 @@ split_lines_iterator_trim :: proc(s: ^string) -> (line: string, ok: bool) {
 	return
 }
 
-split_once :: proc(
-	s, sep: string,
-	allocator := context.allocator,
-) -> (
-	left, right: string,
-	err: mem.Allocator_Error,
-) {
-	parts := strings.split_n(s, sep, 2) or_return
+split_once :: proc(s, sep: string) -> (left, right: string, ok := true) {
+	split_idx := strings.index(s, sep)
+	(split_idx >= 0) or_return
 
-	left = parts[0]
-	right = parts[1]
+	left = s[:split_idx]
+	right = s[split_idx + len(sep):]
 
 	return
 }

@@ -50,7 +50,7 @@ part_2 :: proc(input: string) -> (sum: int) {
 }
 
 main :: proc() {
-	input := os.read_entire_file("day-03/input.txt") or_else panic("Could not read input file")
+	input := os.read_entire_file("day_03/input.txt") or_else panic("Could not read input file")
 	defer delete(input)
 
 	input_string := string(input)

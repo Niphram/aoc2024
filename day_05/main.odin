@@ -1,6 +1,5 @@
 package day_05
 
-import "core:container/bit_array"
 import "core:fmt"
 import "core:os"
 import "core:slice"
@@ -10,9 +9,9 @@ import "core:testing"
 import "../parse"
 import "../utils"
 
-parse_rules :: proc(rules: string) -> ^bit_array.Bit_Array {
-	prio_rules := bit_array.create(9999, 1111) or_else panic("Could not initialize bitset")
+RuleSet :: map[[2]int]struct {}
 
+parse_rules :: proc(rules: string) -> (rules_set: RuleSet) {
 	rules := rules
 	for rule in strings.split_lines_iterator(&rules) {
 		rule := rule
@@ -21,10 +20,10 @@ parse_rules :: proc(rules: string) -> ^bit_array.Bit_Array {
 		parse.take(&rule, '|') or_break
 		right := parse.read_number(&rule) or_break
 
-		bit_array.set(prio_rules, left * 100 + right)
+		map_insert(&rules_set, [2]int{left, right}, struct {}{})
 	}
 
-	return prio_rules
+	return
 }
 
 parse_update :: proc(update: string) -> [dynamic]int {
@@ -41,25 +40,33 @@ parse_update :: proc(update: string) -> [dynamic]int {
 	return pages
 }
 
+ruleset_cmp :: proc(a, b: int) -> slice.Ordering {
+	m := cast(^RuleSet)context.user_ptr
+
+	if ([2]int{a, b}) in m^ {
+		return .Less
+	} else if ([2]int{b, a}) in m^ {
+		return .Greater
+	} else {
+		return .Equal
+	}
+}
 
 part_1 :: proc(input: string) -> (middle_pages_sum: int) {
 	rules_string, update_string :=
 		utils.split_once(input, "\n\n") or_else panic("Can't split input")
 
 	rules := parse_rules(rules_string)
-	defer bit_array.destroy(rules)
+	defer delete(rules)
+
+	// Add ruleset to context
+	context.user_ptr = &rules
 
 	update_loop: for update in strings.split_lines_iterator(&update_string) {
 		pages := parse_update(update)
 		defer delete(pages)
 
-		for pl, i in pages {
-			for pr, j in pages[i + 1:] {
-				if bit_array.get(rules, pr * 100 + pl) {
-					continue update_loop
-				}
-			}
-		}
+		slice.is_sorted_by_cmp(pages[:], ruleset_cmp) or_continue
 
 		middle_pages_sum += pages[len(pages) / 2]
 	}
@@ -73,7 +80,10 @@ part_2 :: proc(input: string) -> (middle_pages_sum: int) {
 
 
 	rules := parse_rules(rules_string)
-	defer bit_array.destroy(rules)
+	defer delete(rules)
+
+	// Add ruleset to context
+	context.user_ptr = &rules
 
 	for update in strings.split_lines_iterator(&update_string) {
 		update := update
@@ -87,34 +97,11 @@ part_2 :: proc(input: string) -> (middle_pages_sum: int) {
 			parse.take(&update, ',')
 		}
 
-		invalid_update := false
-
-		page_loop: for pl, i in pages {
-			for pr, j in pages[i + 1:] {
-				if bit_array.get(rules, pr * 100 + pl) {
-					invalid_update = true
-					break page_loop
-				}
-			}
-		}
-
-		if !invalid_update {
+		if slice.is_sorted_by_cmp(pages[:], ruleset_cmp) {
 			continue
 		}
 
-		sorted := false
-		for !sorted {
-			sorted = true
-
-			for &pl, i in pages {
-				for &pr, j in pages[i + 1:] {
-					if bit_array.get(rules, pr * 100 + pl) {
-						pl, pr = pr, pl
-						sorted = false
-					}
-				}
-			}
-		}
+		slice.sort_by_cmp(pages[:], ruleset_cmp)
 
 		middle_pages_sum += pages[len(pages) / 2]
 	}

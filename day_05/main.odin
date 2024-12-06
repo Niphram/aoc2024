@@ -40,16 +40,10 @@ parse_update :: proc(update: string) -> [dynamic]int {
 	return pages
 }
 
-ruleset_cmp :: proc(a, b: int) -> slice.Ordering {
+ruleset_cmp :: proc(a, b: int) -> bool {
 	m := cast(^RuleSet)context.user_ptr
 
-	if ([2]int{a, b}) in m^ {
-		return .Less
-	} else if ([2]int{b, a}) in m^ {
-		return .Greater
-	} else {
-		return .Equal
-	}
+	return ([2]int{a, b}) in m^
 }
 
 part_1 :: proc(input: string) -> (middle_pages_sum: int) {
@@ -66,7 +60,7 @@ part_1 :: proc(input: string) -> (middle_pages_sum: int) {
 		pages := parse_update(update)
 		defer delete(pages)
 
-		slice.is_sorted_by_cmp(pages[:], ruleset_cmp) or_continue
+		slice.is_sorted_by(pages[:], ruleset_cmp) or_continue
 
 		middle_pages_sum += pages[len(pages) / 2]
 	}
@@ -97,11 +91,11 @@ part_2 :: proc(input: string) -> (middle_pages_sum: int) {
 			parse.take(&update, ',')
 		}
 
-		if slice.is_sorted_by_cmp(pages[:], ruleset_cmp) {
+		if slice.is_sorted_by(pages[:], ruleset_cmp) {
 			continue
 		}
 
-		slice.sort_by_cmp(pages[:], ruleset_cmp)
+		slice.sort_by(pages[:], ruleset_cmp)
 
 		middle_pages_sum += pages[len(pages) / 2]
 	}

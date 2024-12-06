@@ -24,6 +24,10 @@ index_to_xy :: proc(grid: Grid($T), idx: int) -> (x, y: int) {
 	return
 }
 
+in_bounds :: proc(grid: Grid($T), x, y: int) -> bool {
+	return x >= 0 && x < grid.width && y >= 0 && y < grid.height
+}
+
 from :: proc {
 	from_seperated,
 	from_seperated_string,

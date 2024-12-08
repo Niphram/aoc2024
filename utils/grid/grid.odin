@@ -53,6 +53,15 @@ from_seperated_string :: proc(s: string) -> Grid(u8) {
 	return from_seperated(transmute([]u8)s, '\n')
 }
 
+clone :: proc(g: Grid($I)) -> Grid(I) {
+	return Grid(I) {
+		width = g.width,
+		height = g.height,
+		padding = g.padding,
+		bytes = slice.clone(g.bytes),
+	}
+}
+
 clone_proc :: proc(g: Grid($I), mapper: proc(cell: I) -> $O) -> Grid(O) {
 	cells := make([]O, g.width * g.height)
 

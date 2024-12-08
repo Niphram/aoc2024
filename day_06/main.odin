@@ -10,6 +10,15 @@ import "../parse"
 import "../utils"
 import "../utils/grid"
 
+Vec2i :: [2]int
+
+StepStatus :: enum {
+	NewTile,
+	Normal,
+	OutOfBounds,
+	Loop,
+}
+
 Direction :: enum {
 	North,
 	East,
@@ -17,7 +26,7 @@ Direction :: enum {
 	West,
 }
 
-Direction_Vectors := [Direction][2]int {
+Direction_Vectors := [Direction]Vec2i {
 	.North = {0, -1},
 	.East  = {+1, 0},
 	.South = {0, +1},
@@ -31,78 +40,115 @@ Direction_Symbols := [Direction]u8 {
 	.West  = '<',
 }
 
-part_1 :: proc(input: []u8) -> (visited_cells: int) {
-	input_copy := slice.clone(input)
-	defer delete(input_copy)
+Map :: grid.Grid(u8)
 
-	g := grid.from_seperated(input_copy, '\n')
+Guard :: struct {
+	pos: Vec2i,
+	dir: Direction,
+}
 
-	start_idx :=
-		slice.linear_search(g.bytes, '^') or_else panic("Could not determine starting position")
+next_pos :: proc(m: Map, guard: Guard) -> Maybe(Vec2i) {
+	pos := Direction_Vectors[guard.dir] + guard.pos
+	if !grid.in_bounds(m, pos) do return nil
 
-	pos := grid.index_to_xy(g, start_idx)
-	dir := Direction.North
+	return pos
+}
 
-	step_loop: for {
-		grid.set(g, pos, '+')
+simulate_step :: proc(m: Map, guard: ^Guard) -> (status: StepStatus) {
+	loop: for {
+		pos, in_bounds := next_pos(m, guard^).(Vec2i)
+		if !in_bounds do return .OutOfBounds
 
-		for {
-			next_pos := Direction_Vectors[dir] + pos
-			(grid.in_bounds(g, next_pos)) or_break step_loop
-			(grid.get(g, next_pos) == '#') or_break
-			dir = Direction((int(dir) + 1) % 4)
+		switch grid.get(m, pos) {
+		case Direction_Symbols[guard.dir]:
+			return .Loop
+		case '#':
+			guard.dir = Direction((int(guard.dir) + 1) % 4)
+		case:
+			break loop
 		}
-
-		pos += Direction_Vectors[dir]
 	}
 
-	return slice.count(g.bytes, '+')
+	guard.pos += Direction_Vectors[guard.dir]
+	status = .NewTile if grid.get(m, guard.pos) == '.' else .Normal
+	grid.set(m, guard.pos, Direction_Symbols[guard.dir])
+
+	return
+}
+
+simulate_guard :: proc(m: Map, guard: Guard) -> (infinite: bool) {
+	guard := guard
+
+	for {
+		switch simulate_step(m, &guard) {
+		case .OutOfBounds:
+			return false
+		case .Loop:
+			return true
+		case .Normal, .NewTile:
+			continue
+		}
+	}
+
+	return false
+}
+
+part_1 :: proc(input: []u8) -> (visited_cells: int) {
+	input := slice.clone(input)
+	defer delete(input)
+	lab_map := grid.from_seperated(input, '\n')
+
+	start_idx :=
+		slice.linear_search(lab_map.bytes, '^') or_else panic(
+			"Could not determine starting position",
+		)
+
+	guard := Guard {
+		pos = grid.index_to_xy(lab_map, start_idx),
+		dir = Direction.North,
+	}
+
+	simulate_guard(lab_map, guard)
+
+	return slice.count_proc(lab_map.bytes, proc(t: u8) -> bool {
+		switch t {
+		case '^', '>', 'v', '<':
+			return true
+		case:
+			return false
+		}
+	})
 }
 
 part_2 :: proc(input: []u8) -> (obstacle_positions: int) {
-
-	g := grid.from_seperated(input, '\n')
+	input := slice.clone(input)
+	defer delete(input)
+	lab_map := grid.from_seperated(input, '\n')
 
 	start_idx :=
-		slice.linear_search(g.bytes, '^') or_else panic("Could not determine starting position")
+		slice.linear_search(lab_map.bytes, '^') or_else panic(
+			"Could not determine starting position",
+		)
 
-	for x in 0 ..< g.width {
-		for y in 0 ..< g.height {
-			input_copy := slice.clone(input)
-			defer delete(input_copy)
-			g.bytes = input_copy
-
-			if grid.get(g, {x, y}) != '.' {
-				continue
-			}
-
-			grid.set(g, {x, y}, '#')
-
-			pos := grid.index_to_xy(g, start_idx)
-			dir := Direction.North
-
-
-			step_loop: for {
-				for {
-					next_pos := Direction_Vectors[dir] + pos
-					(grid.in_bounds(g, next_pos)) or_break step_loop
-					(grid.get(g, next_pos) == '#') or_break
-					dir = Direction((int(dir) + 1) % 4)
-				}
-
-				pos += Direction_Vectors[dir]
-
-				if grid.get(g, pos) == Direction_Symbols[dir] {
-					obstacle_positions += 1
-					break
-				}
-
-				grid.set(g, pos, Direction_Symbols[dir])
-			}
-		}
+	guard := Guard {
+		pos = grid.index_to_xy(lab_map, start_idx),
+		dir = Direction.North,
 	}
 
-	return
+	for {
+		cloned_map := grid.clone(lab_map)
+		defer delete(cloned_map.bytes)
+		prev_guard := guard
+
+		step_status := simulate_step(lab_map, &guard)
+
+		if step_status == .OutOfBounds do return
+
+		if step_status == .NewTile {
+			grid.set(cloned_map, guard.pos, '#')
+			if simulate_guard(cloned_map, prev_guard) do obstacle_positions += 1
+		}
+	}
 }
 
 main :: proc() {

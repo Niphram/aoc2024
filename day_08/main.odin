@@ -25,9 +25,7 @@ collect_antennas :: proc(g: grid.Grid(u8)) -> map[u8][dynamic]Vec2i {
 }
 
 delete_antennas :: proc(m: map[u8][dynamic]Vec2i) {
-	for _, value in m {
-		delete(value)
-	}
+	for _, value in m do delete(value)
 	delete(m)
 }
 

@@ -40,17 +40,16 @@ part_1 :: proc(input: []u8) -> (visited_cells: int) {
 	start_idx :=
 		slice.linear_search(g.bytes, '^') or_else panic("Could not determine starting position")
 
-	pos: [2]int
-	pos.x, pos.y = grid.index_to_xy(g, start_idx)
+	pos := grid.index_to_xy(g, start_idx)
 	dir := Direction.North
 
 	step_loop: for {
-		g.bytes[grid.xy_to_index(g, pos.x, pos.y)] = '+'
+		grid.set(g, pos, '+')
 
 		for {
 			next_pos := Direction_Vectors[dir] + pos
-			(grid.in_bounds(g, next_pos.x, next_pos.y)) or_break step_loop
-			(grid.get(g, next_pos.x, next_pos.y) == '#') or_break
+			(grid.in_bounds(g, next_pos)) or_break step_loop
+			(grid.get(g, next_pos) == '#') or_break
 			dir = Direction((int(dir) + 1) % 4)
 		}
 
@@ -73,38 +72,35 @@ part_2 :: proc(input: []u8) -> (obstacle_positions: int) {
 			defer delete(input_copy)
 			g.bytes = input_copy
 
-			if grid.get(g, x, y) != '.' {
+			if grid.get(g, {x, y}) != '.' {
 				continue
 			}
 
-			g.bytes[grid.xy_to_index(g, x, y)] = '#'
+			grid.set(g, {x, y}, '#')
 
-			pos: [2]int
-			pos.x, pos.y = grid.index_to_xy(g, start_idx)
+			pos := grid.index_to_xy(g, start_idx)
 			dir := Direction.North
 
 
 			step_loop: for {
 				for {
 					next_pos := Direction_Vectors[dir] + pos
-					(grid.in_bounds(g, next_pos.x, next_pos.y)) or_break step_loop
-					(grid.get(g, next_pos.x, next_pos.y) == '#') or_break
+					(grid.in_bounds(g, next_pos)) or_break step_loop
+					(grid.get(g, next_pos) == '#') or_break
 					dir = Direction((int(dir) + 1) % 4)
 				}
 
 				pos += Direction_Vectors[dir]
 
-				if grid.get(g, pos.x, pos.y) == Direction_Symbols[dir] {
+				if grid.get(g, pos) == Direction_Symbols[dir] {
 					obstacle_positions += 1
 					break
 				}
 
-				g.bytes[grid.xy_to_index(g, pos.x, pos.y)] = Direction_Symbols[dir]
+				grid.set(g, pos, Direction_Symbols[dir])
 			}
-
 		}
 	}
-
 
 	return
 }

@@ -35,14 +35,14 @@ part_2 :: proc(input: []u8) -> (count: int) {
 
 	for x in 1 ..< (g.width - 1) {
 		for y in 1 ..< (g.height - 1) {
-			if grid.get(g, x, y) != 'A' {
+			if grid.get(g, {x, y}) != 'A' {
 				continue
 			}
 
-			tl := grid.get(g, x - 1, y - 1)
-			tr := grid.get(g, x + 1, y - 1)
-			bl := grid.get(g, x - 1, y + 1)
-			br := grid.get(g, x + 1, y + 1)
+			tl := grid.get(g, {x - 1, y - 1})
+			tr := grid.get(g, {x + 1, y - 1})
+			bl := grid.get(g, {x - 1, y + 1})
+			br := grid.get(g, {x + 1, y + 1})
 
 			if (tl + br) != ('M' + 'S') {
 				continue

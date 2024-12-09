@@ -29,13 +29,20 @@ parse_disk :: proc(input: []u8) -> (files, gaps: [dynamic]MemoryRegion) {
 	return
 }
 
-calculate_checksum :: proc(files: []MemoryRegion) -> int {
+calculate_checksum :: proc {
+	calculate_checksum_region,
+	calculate_checksum_slice,
+}
+
+calculate_checksum_region :: proc(region: MemoryRegion) -> int {
+	return region.id * region.size * (2 * region.offset + region.size - 1) / 2
+}
+
+calculate_checksum_slice :: proc(files: []MemoryRegion) -> int {
 	checksum: int
 
 	for f in files {
-		for m in f.offset ..< (f.offset + f.size) {
-			checksum += m * f.id
-		}
+		checksum += calculate_checksum_region(f)
 	}
 
 	return checksum
@@ -46,36 +53,35 @@ part_1 :: proc(input: []u8) -> (checksum: int) {
 	defer delete(files)
 	defer delete(gaps)
 
-	file_ptr := len(files) - 1
-	for &gap, gi in gaps {
-		// No more files to fill gaps with
-		if gi >= file_ptr do break
+	lower_ptr := 0
+	upper_ptr := len(files) - 1
 
-		for gap.size > 0 {
-			file := &files[file_ptr]
+	for ; lower_ptr < upper_ptr; lower_ptr += 1 {
+		// File on the left is positioned correctly
+		checksum += calculate_checksum(files[lower_ptr])
 
-			if gap.size >= file.size {
-				// File fits into the gap
-				file.offset = gap.offset
-				gap.size -= file.size
-				gap.offset += file.size
+		// Fill the gap with files from the right
+		for gap := gaps[lower_ptr]; gap.size > 0 && lower_ptr < upper_ptr; {
+			file := &files[upper_ptr]
 
-				file_ptr -= 1
-			} else {
-				// File partially fits
-				file_part := file^
-				file_part.size = gap.size
-				file_part.offset = gap.offset
-				append(&files, file_part)
+			min_size := min(gap.size, file.size)
 
-				// Remaining file
-				file.size -= gap.size
-				gap.size = 0
-			}
+			// Calculate the checksum of the moved file (might be truncated, if the file could not fit)
+			checksum += calculate_checksum(
+				MemoryRegion{id = file.id, offset = gap.offset, size = min_size},
+			)
+
+			// Update memory region
+			file.size -= min_size
+			gap.offset += min_size
+			gap.size -= min_size
+
+			// Continue with next file
+			if file.size == 0 do upper_ptr -= 1
 		}
 	}
 
-	return calculate_checksum(files[:])
+	return
 }
 
 part_2 :: proc(input: []u8) -> (checksum: int) {

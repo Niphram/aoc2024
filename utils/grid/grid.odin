@@ -13,6 +13,12 @@ get :: proc(grid: Grid($T), pos: [2]int) -> T {
 	return grid.bytes[xy_to_index(grid, pos)]
 }
 
+get_safe :: proc(grid: Grid($T), pos: [2]int) -> Maybe(T) {
+	if !in_bounds(grid, pos) do return nil
+
+	return get(grid, pos)
+}
+
 set :: proc(grid: Grid($T), pos: [2]int, value: T) {
 	grid.bytes[xy_to_index(grid, pos)] = value
 }

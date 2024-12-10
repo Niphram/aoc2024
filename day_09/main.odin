@@ -56,10 +56,7 @@ part_1 :: proc(input: []u8) -> (checksum: int) {
 	lower_ptr := 0
 	upper_ptr := len(files) - 1
 
-	for ; lower_ptr < upper_ptr; lower_ptr += 1 {
-		// File on the left is positioned correctly
-		checksum += calculate_checksum(files[lower_ptr])
-
+	for ; lower_ptr <= upper_ptr; lower_ptr += 1 {
 		// Fill the gap with files from the right
 		for gap := gaps[lower_ptr]; gap.size > 0 && lower_ptr < upper_ptr; {
 			file := &files[upper_ptr]
@@ -79,6 +76,9 @@ part_1 :: proc(input: []u8) -> (checksum: int) {
 			// Continue with next file
 			if file.size == 0 do upper_ptr -= 1
 		}
+
+		// File on the left is positioned correctly
+		checksum += calculate_checksum(files[lower_ptr])
 	}
 
 	return

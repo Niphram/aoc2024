@@ -13,3 +13,4 @@ package tests
 @(require) import "../day_07"
 @(require) import "../day_08"
 @(require) import "../day_09"
+@(require) import "../day_10"

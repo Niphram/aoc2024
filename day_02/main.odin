@@ -79,7 +79,8 @@ part_2 :: proc(input: string) -> (save_reports: int) {
 }
 
 main :: proc() {
-	input := os.read_entire_file("day_02/input.txt") or_else panic("Could not read input file")
+	input :=
+		os.read_entire_file(#directory + "/input.txt") or_else panic("Could not read input file")
 	defer delete(input)
 
 	input_string := string(input)

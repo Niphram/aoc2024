@@ -152,7 +152,8 @@ part_2 :: proc(input: []u8) -> (obstacle_positions: int) {
 }
 
 main :: proc() {
-	input := os.read_entire_file("day_06/input.txt") or_else panic("Could not read input file")
+	input :=
+		os.read_entire_file(#directory + "/input.txt") or_else panic("Could not read input file")
 	defer delete(input)
 
 	fmt.printfln("Part 1: %i", part_1(input))

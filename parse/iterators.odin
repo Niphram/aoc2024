@@ -10,8 +10,8 @@ seperated_list_iter :: proc(
 	result: R,
 	ok := true,
 ) {
-	for {
-		result = parser(s) or_return
-		seperator(s)
-	}
+	result = parser(s) or_return
+	seperator(s)
+
+	return
 }

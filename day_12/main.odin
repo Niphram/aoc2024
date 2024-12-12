@@ -3,17 +3,14 @@ package day_12
 import "core:fmt"
 import "core:os"
 
+import "../utils"
 import "../utils/grid"
 
 Vec2i :: [2]int
 NEIGHBORS :: [4]Vec2i{{0, -1}, {+1, 0}, {0, +1}, {-1, 0}}
 
 GardenPlots :: grid.Grid(u8)
-
-Region :: struct {
-	min, max: Vec2i,
-	points:   map[Vec2i]struct {},
-}
+Region :: utils.Pointcloud(int)
 
 delete_regions :: proc(regions: [dynamic]Region) {
 	for r in regions do delete(r.points)
@@ -24,12 +21,7 @@ flood_fill :: proc(g: GardenPlots, pos: Vec2i, region: ^Region) {
 	region_marker := grid.get(g, pos)
 
 	grid.set(g, pos, 0)
-	region.points[pos] = {}
-
-	region.min.x = min(region.min.x, pos.x)
-	region.max.x = max(region.max.x, pos.x)
-	region.min.y = min(region.min.y, pos.y)
-	region.max.y = max(region.max.y, pos.y)
+	utils.pointcloud_add(region, pos)
 
 	for offset in NEIGHBORS {
 		if (pos + offset) in region.points do continue

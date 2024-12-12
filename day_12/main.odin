@@ -2,175 +2,116 @@ package day_12
 
 import "core:fmt"
 import "core:os"
-import "core:testing"
 
 import "../utils/grid"
 
 Vec2i :: [2]int
-Grid :: grid.Grid(u8)
+NEIGHBORS :: [4]Vec2i{{0, -1}, {+1, 0}, {0, +1}, {-1, 0}}
 
-NEIGHBORS_4 :: [4]Vec2i{{0, -1}, {+1, 0}, {0, +1}, {-1, 0}}
-NEIGHBORS_DIAG :: [?]Vec2i{{+1, +1}, {+1, -1}, {-1, +1}, {-1, -1}}
+GardenPlots :: grid.Grid(u8)
 
-HashSet :: map[Vec2i]struct {}
-
-fence :: proc(g: ^Grid, starting_pos: Vec2i) -> (cost: int) {
-	region := grid.get(g^, starting_pos)
-
-	to_check := [dynamic]Vec2i{starting_pos}
-	defer delete(to_check)
-
-
-	area: HashSet
-	defer delete(area)
-
-	for pos in pop_safe(&to_check) {
-		if grid.get(g^, pos) != region do continue
-
-		area[pos] = {}
-
-		for n in NEIGHBORS_4 {
-			if (pos + n) in area do continue
-
-			if grid.in_bounds(g^, pos + n) {
-				append(&to_check, pos + n)
-			}
-		}
-	}
-
-	fences := 0
-
-	for k in area {
-		for n in NEIGHBORS_4 {
-			if (k + n) not_in area {
-				fences += 1
-			}
-		}
-
-		grid.set(g^, k, 0)
-	}
-
-	return len(area) * fences
+Region :: struct {
+	min, max: Vec2i,
+	points:   map[Vec2i]struct {},
 }
 
-fence2 :: proc(g: ^Grid, starting_pos: Vec2i) -> (cost: int) {
-	region := grid.get(g^, starting_pos)
-
-	to_check := [dynamic]Vec2i{starting_pos}
-	defer delete(to_check)
-
-
-	area: HashSet
-	defer delete(area)
-
-	for pos in pop_safe(&to_check) {
-		if grid.get(g^, pos) != region do continue
-
-		area[pos] = {}
-
-		for n in NEIGHBORS_4 {
-			if (pos + n) in area do continue
-
-			if grid.in_bounds(g^, pos + n) {
-				append(&to_check, pos + n)
-			}
-		}
-	}
-
-
-	fences: HashSet
-	defer delete(fences)
-
-	corners := 0
-
-	for k in area {
-
-		neighbors: bit_set[0 ..< 8]
-
-		for n, i in NEIGHBORS_4 {
-			if (k + n) in area {
-				neighbors += {i}
-			}
-		}
-
-		switch neighbors {
-		// Single
-		case {}:
-			corners += 4
-		// Only one neighbor
-		case {0}, {1}, {2}, {3}:
-			corners += 2
-		case {0, 1}:
-			corners += 1
-			if (k + {+1, -1}) not_in area do corners += 1
-		case {1, 2}:
-			corners += 1
-			if (k + {+1, +1}) not_in area do corners += 1
-		case {2, 3}:
-			corners += 1
-			if (k + {-1, +1}) not_in area do corners += 1
-		case {3, 0}:
-			corners += 1
-			if (k + {-1, -1}) not_in area do corners += 1
-
-		// T-Pieces
-		case {1, 2, 3}:
-			if (k + {-1, +1}) not_in area do corners += 1
-			if (k + {+1, +1}) not_in area do corners += 1
-		case {0, 2, 3}:
-			if (k + {-1, -1}) not_in area do corners += 1
-			if (k + {-1, +1}) not_in area do corners += 1
-		case {0, 1, 3}:
-			if (k + {-1, -1}) not_in area do corners += 1
-			if (k + {+1, -1}) not_in area do corners += 1
-		case {0, 1, 2}:
-			if (k + {+1, +1}) not_in area do corners += 1
-			if (k + {+1, -1}) not_in area do corners += 1
-
-		case {0, 1, 2, 3}:
-			for n, i in NEIGHBORS_DIAG {
-				if (k + n) not_in area {
-					corners += 1
-				}
-			}
-		}
-
-		grid.set(g^, k, 0)
-	}
-
-
-	//fmt.println("Area starting at", starting_pos, rune(region), len(area), corners)
-
-	return len(area) * corners
+delete_regions :: proc(regions: [dynamic]Region) {
+	for r in regions do delete(r.points)
+	delete(regions)
 }
 
-part_1 :: proc(input: []u8) -> (cost: int) {
+flood_fill :: proc(g: GardenPlots, pos: Vec2i, region: ^Region) {
+	region_marker := grid.get(g, pos)
 
-	g := grid.clone(grid.from_seperated(input, '\n'))
+	grid.set(g, pos, 0)
+	region.points[pos] = {}
+
+	region.min.x = min(region.min.x, pos.x)
+	region.max.x = max(region.max.x, pos.x)
+	region.min.y = min(region.min.y, pos.y)
+	region.max.y = max(region.max.y, pos.y)
+
+	for offset in NEIGHBORS {
+		if (pos + offset) in region.points do continue
+
+		if v, ok := grid.get_safe(g, pos + offset).(u8); ok && v == region_marker {
+			flood_fill(g, pos + offset, region)
+		}
+	}
+}
+
+separate_regions :: proc(g: GardenPlots) -> [dynamic]Region {
+	g := grid.clone(g)
 	defer delete(g.bytes)
+
+	regions := make([dynamic]Region)
 
 	for y in 0 ..< g.height {
 		for x in 0 ..< g.width {
 			if grid.get(g, {x, y}) != 0 {
-				cost += fence(&g, {x, y})
+				region := Region{{x, y}, {x, y}, {{x, y} = {}}}
+				flood_fill(g, {x, y}, &region)
+				append(&regions, region)
 			}
 		}
+	}
+
+	return regions
+}
+
+part_1 :: proc(input: []u8) -> (cost: int) {
+	regions := separate_regions(grid.from_seperated(input, '\n'))
+	defer delete_regions(regions)
+
+	for r in regions {
+		fence_count := 0
+
+		// Check neighbors of every position in the region 
+		for n in NEIGHBORS {
+			for p in r.points {
+				if (p + n) not_in r.points do fence_count += 1
+			}
+		}
+
+		cost += fence_count * len(r.points)
 	}
 
 	return
 }
 
 part_2 :: proc(input: []u8) -> (cost: int) {
-	g := grid.clone(grid.from_seperated(input, '\n'))
-	defer delete(g.bytes)
+	regions := separate_regions(grid.from_seperated(input, '\n'))
+	defer delete_regions(regions)
 
-	for y in 0 ..< g.height {
-		for x in 0 ..< g.width {
-			if grid.get(g, {x, y}) != 0 {
-				cost += fence2(&g, {x, y})
+	for r in regions {
+		corners := 0
+
+		for y in r.min.y - 1 ..= r.max.y {
+			for x in r.min.x - 1 ..= r.max.x {
+				// Test positions in a 2x2 area
+				mat: bit_set[0 ..< 4]
+				for o, i in ([?]Vec2i{{0, 0}, {1, 0}, {1, 1}, {0, 1}}) {
+					if ({x, y} + o) in r.points do mat += {i}
+				}
+
+				switch mat {
+				// Only one of the positions is inside the region -> external corner
+				case {0}, {1}, {2}, {3}:
+					corners += 1
+				// Three of the positions are inside the region -> internal corners
+				case {1, 2, 3}, {0, 2, 3}, {0, 1, 3}, {0, 1, 2}:
+					corners += 1
+				// Two opposing positions are inside the region -> 2 external corners
+				case {0, 2}, {1, 3}:
+					corners += 2
+				}
 			}
 		}
+
+		// The number of sides (straight fences) is equal to the number of corners of the shape
+		cost += corners * len(r.points)
 	}
+
 	return
 }
 
@@ -181,29 +122,4 @@ main :: proc() {
 
 	fmt.printfln("Part 1: %i", part_1(input))
 	fmt.printfln("Part 2: %i", part_2(input))
-}
-
-EXAMPLE_INPUT: string : `............
-........0...
-.....0......
-.......0....
-....0.......
-......A.....
-............
-............
-........A...
-.........A..
-............
-............
-`
-
-
-@(test)
-part1_test :: proc(t: ^testing.T) {
-	testing.expect_value(t, part_1(transmute([]u8)EXAMPLE_INPUT), 14)
-}
-
-@(test)
-part2_test :: proc(t: ^testing.T) {
-	testing.expect_value(t, part_2(transmute([]u8)EXAMPLE_INPUT), 34)
 }

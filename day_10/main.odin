@@ -28,7 +28,8 @@ count_trails :: proc(
 
 	// Check all neighbors and continue trail if possible
 	for n in NEIGHBORS {
-		if v, ok := grid.get_safe(tm, start_pos + n).(u8); ok && v == (current + 1) {
+		neighbor_value := grid.get_safe(tm, start_pos + n) or_continue
+		if neighbor_value == (current + 1) {
 			possible_trails += count_trails(tm, start_pos + n, end_positions)
 		}
 	}

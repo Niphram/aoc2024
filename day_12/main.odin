@@ -26,7 +26,8 @@ flood_fill :: proc(g: GardenPlots, pos: Vec2i, region: ^Region) {
 	for offset in NEIGHBORS {
 		if (pos + offset) in region.points do continue
 
-		if v, ok := grid.get_safe(g, pos + offset).(u8); ok && v == region_marker {
+		value := grid.get_safe(g, pos + offset) or_continue
+		if value == region_marker {
 			flood_fill(g, pos + offset, region)
 		}
 	}

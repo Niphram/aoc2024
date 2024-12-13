@@ -28,7 +28,7 @@ parse_input :: proc(input: ^string) -> (a, b, prize: Vec2i, ok := true) {
 	return
 }
 
-solve_button_presses :: proc(a_btn, b_btn, prize: Vec2i) -> (tokens: int) {
+solve_button_presses :: proc(a_btn, b_btn, prize: Vec2i) -> (a_presses, b_presses: int, ok: bool) {
 	// Equations
 	// A*a + B*b = c
 	// A*d + B*e = f
@@ -40,8 +40,6 @@ solve_button_presses :: proc(a_btn, b_btn, prize: Vec2i) -> (tokens: int) {
 
 	// Shorter names
 	a, b, c, d, e, f := a_btn.x, b_btn.x, prize.x, a_btn.y, b_btn.y, prize.y
-
-	a_presses, b_presses: int
 
 	// Solve for B-presses
 	{
@@ -68,7 +66,11 @@ solve_button_presses :: proc(a_btn, b_btn, prize: Vec2i) -> (tokens: int) {
 		a_presses = numerator / d
 	}
 
-	return b_presses + 3 * a_presses
+	// This doesn't happen in my input, although I can't say for sure the input always adheres to this rule
+	// The input also seems to guarantee, that the two linear equations only ever have zero or one solutions
+	if a_presses < 0 || b_presses < 0 do return
+
+	return a_presses, b_presses, true
 }
 
 part_1 :: proc(input: string) -> (tokens: int) {
@@ -79,7 +81,15 @@ part_1 :: proc(input: string) -> (tokens: int) {
 
 		a, b, prize := parse_input(&machine) or_continue
 
-		tokens += solve_button_presses(a, b, prize)
+		test_a := prize / a
+		test_b := prize / b
+
+		a_presses, b_presses := solve_button_presses(a, b, prize) or_continue
+
+		// This doesn't happen in my input, although I can't say for sure the input always adheres to this rule
+		if a_presses > 100 || b_presses > 100 do continue
+
+		tokens += b_presses + 3 * a_presses
 	}
 
 	return
@@ -94,7 +104,8 @@ part_2 :: proc(input: string) -> (tokens: int) {
 		a, b, prize := parse_input(&machine) or_continue
 		prize += {10000000000000, 10000000000000}
 
-		tokens += solve_button_presses(a, b, prize)
+		a_presses, b_presses := solve_button_presses(a, b, prize) or_continue
+		tokens += b_presses + 3 * a_presses
 	}
 
 	return

@@ -1,11 +1,11 @@
 package day_02
 
 import "core:fmt"
-import "core:os"
 import "core:strings"
 import "core:testing"
 
 import "../parse"
+import "../utils"
 
 parse_line :: proc(s: ^string) -> [dynamic]int {
 	list: [dynamic]int
@@ -79,14 +79,7 @@ part_2 :: proc(input: string) -> (save_reports: int) {
 }
 
 main :: proc() {
-	input :=
-		os.read_entire_file(#directory + "/input.txt") or_else panic("Could not read input file")
-	defer delete(input)
-
-	input_string := string(input)
-
-	fmt.printfln("Part 1: %i", part_1(input_string))
-	fmt.printfln("Part 2: %i", part_2(input_string))
+	utils.aoc_main(part_1, part_2)
 }
 
 EXAMPLE_INPUT :: `7 6 4 2 1

@@ -1,7 +1,6 @@
 package day_05
 
 import "core:fmt"
-import "core:os"
 import "core:slice"
 import "core:strings"
 import "core:testing"
@@ -104,12 +103,7 @@ part_2 :: proc(input: string) -> (middle_pages_sum: int) {
 }
 
 main :: proc() {
-	input :=
-		os.read_entire_file(#directory + "/input.txt") or_else panic("Could not read input file")
-	defer delete(input)
-
-	fmt.printfln("Part 1: %i", part_1(string(input)))
-	fmt.printfln("Part 2: %i", part_2(string(input)))
+	utils.aoc_main(part_1, part_2)
 }
 
 EXAMPLE_INPUT: string : `47|53

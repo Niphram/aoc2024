@@ -1,7 +1,6 @@
 package day_14
 
 import "core:fmt"
-import "core:os"
 import "core:slice"
 import "core:strings"
 import "core:testing"
@@ -129,35 +128,23 @@ part_2 :: proc(input: string) -> (iterations_until_tree: int) {
 	}
 
 	// Using the Chinese Remainder Theorem
-	return utils.chinese_remainder_theorem(
+	iterations_until_tree = utils.chinese_remainder_theorem(
 		{{min_x_variance_iteration, room_size.x}, {min_y_variance_iteration, room_size.y}},
 	)
 
-}
-
-main :: proc() {
-	input :=
-		os.read_entire_file(#directory + "/input.txt") or_else panic("Could not read input file")
-	defer delete(input)
-
-
-	part1_result := part_1(string(input))
-	part2_result := part_2(string(input))
-
-	fmt.printfln("Part 1: %i", part1_result)
-	fmt.printfln("Part 2: %i", part2_result)
-
 	// Show tree when config is set
 	when SHOW_TREE {
-		robots := parse_input(string(input))
-		defer delete(robots)
-
-		for _ in 0 ..< part2_result do simulate_movement(robots[:], {101, 103})
-
+		for _ in iterations_until_tree ..< part2_result do simulate_movement(robots[:], {101, 103})
 		print_robots(robots[:], {101, 103})
 	} else {
 		fmt.println("Run with '-define:SHOW_TREE=true' to print the tree.")
 	}
+
+	return
+}
+
+main :: proc() {
+	utils.aoc_main(proc(input: string) -> int {return part_1(input)}, part_2)
 }
 
 EXAMPLE_INPUT: string : `p=0,4 v=3,-3

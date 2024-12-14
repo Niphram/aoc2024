@@ -2,7 +2,6 @@ package day_11
 
 import "core:fmt"
 import "core:math"
-import "core:os"
 import "core:testing"
 
 import "../parse"
@@ -70,12 +69,7 @@ part_2 :: proc(input: string) -> (number_of_stones: int) {
 }
 
 main :: proc() {
-	input :=
-		os.read_entire_file(#directory + "/input.txt") or_else panic("Could not read input file")
-	defer delete(input)
-
-	fmt.printfln("Part 1: %i", part_1(string(input)))
-	fmt.printfln("Part 2: %i", part_2(string(input)))
+	utils.aoc_main(part_1, part_2)
 }
 
 @(test)

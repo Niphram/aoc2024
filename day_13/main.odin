@@ -1,11 +1,11 @@
 package day_13
 
 import "core:fmt"
-import "core:os"
 import "core:strings"
 import "core:testing"
 
 import "../parse"
+import "../utils"
 
 Vec2i :: [2]int
 
@@ -112,12 +112,7 @@ part_2 :: proc(input: string) -> (tokens: int) {
 }
 
 main :: proc() {
-	input :=
-		os.read_entire_file(#directory + "/input.txt") or_else panic("Could not read input file")
-	defer delete(input)
-
-	fmt.printfln("Part 1: %i", part_1(string(input)))
-	fmt.printfln("Part 2: %i", part_2(string(input)))
+	utils.aoc_main(part_1, part_2)
 }
 
 EXAMPLE_INPUT: string : `Button A: X+94, Y+34

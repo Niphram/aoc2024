@@ -1,8 +1,5 @@
 package utils
 
-import "core:fmt"
-import "core:mem"
-import "core:os"
 import "core:strings"
 
 trim_newline :: proc(s: string) -> string {

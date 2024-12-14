@@ -1,12 +1,12 @@
 package day_01
 
 import "core:fmt"
-import "core:os"
 import "core:slice"
 import "core:strings"
 import "core:testing"
 
 import "../parse"
+import "../utils"
 
 parse_input :: proc(s: ^string) -> #soa[dynamic][2]int {
 	pair_parser :: proc(s: ^string) -> (pair: [2]int, ok := true) {
@@ -69,14 +69,7 @@ part_2 :: proc(input: string) -> (result: int) {
 }
 
 main :: proc() {
-	input :=
-		os.read_entire_file(#directory + "/input.txt") or_else panic("Could not read input file")
-	defer delete(input)
-
-	input_string := string(input)
-
-	fmt.printfln("Part 1: %i", part_1(input_string))
-	fmt.printfln("Part 2: %i", part_2(input_string))
+	utils.aoc_main(part_1, part_2)
 }
 
 EXAMPLE_INPUT :: `3   4

@@ -2,6 +2,7 @@ package day_14
 
 import "core:fmt"
 import "core:os"
+import "core:slice"
 import "core:strings"
 import "core:testing"
 
@@ -59,72 +60,89 @@ part_1 :: proc(input: string, room_size := Vec2i{101, 103}) -> (safety_factor :=
 		simulate_movement(robots[:], room_size)
 	}
 
-	sector_counts: [4]int
+	room_center := room_size / 2
 
+	sector_counts: [4]int
 	for r in robots {
-		if r.pos.x < (room_size.x / 2) && r.pos.y < (room_size.y / 2) {
+		if r.pos.x < room_center.x && r.pos.y < room_center.y {
 			sector_counts[0] += 1
-		} else if r.pos.x > (room_size.x / 2) && r.pos.y < (room_size.y / 2) {
+		} else if r.pos.x > room_center.x && r.pos.y < room_center.y {
 			sector_counts[1] += 1
-		} else if r.pos.x < (room_size.x / 2) && r.pos.y > (room_size.y / 2) {
+		} else if r.pos.x < room_center.x && r.pos.y > room_center.y {
 			sector_counts[2] += 1
-		} else if r.pos.x > (room_size.x / 2) && r.pos.y > (room_size.y / 2) {
+		} else if r.pos.x > room_center.x && r.pos.y > room_center.y {
 			sector_counts[3] += 1
 		}
 	}
 
-	safety_factor *= sector_counts[0]
-	safety_factor *= sector_counts[1]
-	safety_factor *= sector_counts[2]
-	safety_factor *= sector_counts[3]
-
-	return
+	// Product of all sector counts
+	return slice.reduce(sector_counts[:], 1, proc(val, acc: int) -> int {
+		return val * acc
+	})
 }
 
-part_2 :: proc(input: string) -> (tokens: int) {
+part_2 :: proc(input: string) -> (iterations_until_tree: int) {
 	robots := parse_input(input)
 	defer delete(robots)
 
 	// Since the room dimensions are prime numbers, all robots form a cycle that is 101*103 = 10403 long (LCM)
 	room_size := Vec2i{101, 103}
-	room_cycle := room_size.x * room_size.y
 
 	// By looking at the first 103 iterations you can find obvious clusterings of the robots.
-	// Every 101 iterations the robots form a vertical line and every 103 a horizontal line.
-	// The first of these instances is the offset in the tree-pattern.
-	// In my case, after 70 and 19 iterations respectively
-	// Tree is visible when (i-70) % 101 = (i-19) % 103
-	// TODO: Solve this equation. So I can just iterate through the first 103 iterations and find the vertical/horizontal offset.
+	// Iterate through the first 103 seconds (after that the horizonal and vertical axis will repeat)
+	// Separately calculate the variance of x and y values and keep track of the iteration where it was lowest.
+	// These will be the iterations where the robots line up on one axis.
+	// In my case, these were after 70 and 19 iterations respectively
+	// Then use the Chinese Remainder Theorem to find the iteration where the two cycles overlap
 
-	// Find the average position of all robots and then calculate the average squared distance to that origin
-	average_distance_sq :: proc(robots: []Robot) -> int {
-		center: Vec2i
-		for r in robots {
-			center += r.pos
-		}
-		center /= len(robots)
+	variance_2d :: proc(robots: []Robot) -> Vec2i {
+		// Calculate the mean position of all robots
+		mean: Vec2i
+		for r in robots do mean += r.pos
+		mean /= len(robots)
 
-		dis: int
-		for r in robots {
-			offset := center - r.pos
-			dis += offset.x * offset.x + offset.y * offset.y
-		}
-		dis /= len(robots)
-
-		return dis
+		// Calculate the variance to the mean
+		variance: Vec2i
+		for r in robots do variance += (r.pos - mean) * (r.pos - mean)
+		return variance / len(robots)
 	}
 
-	for i in 0 ..< room_cycle {
-		// Simple heuristic that seems to work okay
-		if average_distance_sq(robots[:]) < 1000 {
-			when SHOW_TREE do print_robots(robots[:], room_size)
-			return i
+	min_x_variance, min_x_variance_iteration := max(int), 0
+	min_y_variance, min_y_variance_iteration := max(int), 0
+
+	// Find the iterations with the lowest variances
+	for i in 0 ..< 103 {
+		variance := variance_2d(robots[:])
+
+		if variance.x < min_x_variance {
+			min_x_variance = variance.x
+			min_x_variance_iteration = i
+		}
+
+		if variance.y < min_y_variance {
+			min_y_variance = variance.y
+			min_y_variance_iteration = i
 		}
 
 		simulate_movement(robots[:], room_size)
 	}
 
-	return -1
+	// Using the Chinese Remainder Theorem
+	N := room_size.x * room_size.y
+	N1 := room_size.y
+	N2 := room_size.x
+
+	X1 := 51 // 101 = 1 (mod 103)
+	X2 := 51 // 103 = 1 (mod 101)
+
+	b1 := min_x_variance_iteration
+	b2 := min_y_variance_iteration
+
+	X := (X1 * N1 * b1) + (X2 * N2 * b2)
+
+	iterations_until_tree = X % N
+
+	return
 }
 
 main :: proc() {
@@ -132,10 +150,24 @@ main :: proc() {
 		os.read_entire_file(#directory + "/input.txt") or_else panic("Could not read input file")
 	defer delete(input)
 
-	when !SHOW_TREE do fmt.println("Run with '-define:SHOW_TREE=true' to print the tree.")
 
-	fmt.printfln("Part 1: %i", part_1(string(input)))
-	fmt.printfln("Part 2: %i", part_2(string(input)))
+	part1_result := part_1(string(input))
+	part2_result := part_2(string(input))
+
+	fmt.printfln("Part 1: %i", part1_result)
+	fmt.printfln("Part 2: %i", part2_result)
+
+	// Show tree when config is set
+	when SHOW_TREE {
+		robots := parse_input(string(input))
+		defer delete(robots)
+
+		for _ in 0 ..< part2_result do simulate_movement(robots[:], {101, 103})
+
+		print_robots(robots[:], {101, 103})
+	} else {
+		fmt.println("Run with '-define:SHOW_TREE=true' to print the tree.")
+	}
 }
 
 EXAMPLE_INPUT: string : `p=0,4 v=3,-3

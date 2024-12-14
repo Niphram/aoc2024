@@ -19,11 +19,12 @@ print_robots :: proc(robots: []Robot, room: Vec2i) {
 
 	for y in 0 ..< g.height {
 		for x in 0 ..< g.width {
-			if grid.get(g, {x, y}) do fmt.print("#")
-			else do fmt.print(".")
+			if grid.get(g, {x, y}) do fmt.print("#", flush = false)
+			else do fmt.print(".", flush = false)
 		}
-		fmt.println()
+		fmt.println(flush = false)
 	}
 
-	fmt.println()
+	// Flush the output
+	fmt.print()
 }

@@ -7,6 +7,7 @@ import "core:strings"
 import "core:testing"
 
 import "../parse"
+import "../utils"
 
 SHOW_TREE :: #config(SHOW_TREE, false)
 
@@ -128,21 +129,10 @@ part_2 :: proc(input: string) -> (iterations_until_tree: int) {
 	}
 
 	// Using the Chinese Remainder Theorem
-	N := room_size.x * room_size.y
-	N1 := room_size.y
-	N2 := room_size.x
+	return utils.chinese_remainder_theorem(
+		{{min_x_variance_iteration, room_size.x}, {min_y_variance_iteration, room_size.y}},
+	)
 
-	X1 := 51 // 101 = 1 (mod 103)
-	X2 := 51 // 103 = 1 (mod 101)
-
-	b1 := min_x_variance_iteration
-	b2 := min_y_variance_iteration
-
-	X := (X1 * N1 * b1) + (X2 * N2 * b2)
-
-	iterations_until_tree = X % N
-
-	return
 }
 
 main :: proc() {

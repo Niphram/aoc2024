@@ -45,3 +45,19 @@ read_number :: proc(s: ^string) -> (result: int, ok := true) {
 
 	return
 }
+
+read_signed_number :: proc(s: ^string) -> (result: int, ok := true) {
+	negative := false
+
+	if strings.has_prefix(s^, "-") {
+		negative = true
+		s^ = s[1:]
+	}
+
+	number := take_proc(unicode.is_digit, s) or_return
+	result = strconv.parse_int(number, 10) or_return
+
+	if negative do result = -result
+
+	return
+}

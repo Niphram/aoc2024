@@ -1,5 +1,7 @@
 package day_15
 
+import "../utils"
+
 Direction :: enum u8 {
 	Up    = '^',
 	Right = '>',
@@ -15,9 +17,8 @@ Direction_Vectors := #sparse[Direction][2]int {
 }
 
 Object :: struct {
-	pos:  [2]int,
-	size: [2]int,
-	type: enum {
+	using aabb: utils.AABB(int),
+	type:       enum {
 		Wall,
 		Box,
 		Robot,
@@ -52,19 +53,10 @@ push_recursive :: proc(
 	for &other in objects {
 		if o == &other do continue
 
-		if collides(o^, other) {
+		if utils.aabb_intersects(o.aabb, other.aabb) {
 			push_recursive(&other, objects, dir, pushed_objects) or_return
 		}
 	}
 
 	return
-}
-
-collides :: proc(a, b: Object) -> bool {
-	return(
-		a.pos.x < b.pos.x + b.size.x &&
-		a.pos.x + a.size.x > b.pos.x &&
-		a.pos.y < b.pos.y + b.size.y &&
-		a.pos.y + a.size.y > b.pos.y \
-	)
 }

@@ -87,6 +87,7 @@ part_2 :: proc(input: string) -> (iterations_until_tree: int) {
 
 	// Since the room dimensions are prime numbers, all robots form a cycle that is 101*103 = 10403 long (LCM)
 	room_size := Vec2i{101, 103}
+	longest_dimension := slice.max(room_size[:])
 
 	// By looking at the first 103 iterations you can find obvious clusterings of the robots.
 	// Iterate through the first 103 seconds (after that the horizonal and vertical axis will repeat)
@@ -111,7 +112,7 @@ part_2 :: proc(input: string) -> (iterations_until_tree: int) {
 	min_y_variance, min_y_variance_iteration := max(int), 0
 
 	// Find the iterations with the lowest variances
-	for i in 0 ..< 103 {
+	for i in 0 ..< longest_dimension {
 		variance := variance_2d(robots[:])
 
 		if variance.x < min_x_variance {
@@ -134,7 +135,7 @@ part_2 :: proc(input: string) -> (iterations_until_tree: int) {
 
 	// Show tree when config is set
 	when SHOW_TREE {
-		for _ in iterations_until_tree ..< part2_result do simulate_movement(robots[:], {101, 103})
+		for _ in longest_dimension ..< iterations_until_tree do simulate_movement(robots[:], {101, 103})
 		print_robots(robots[:], {101, 103})
 	} else {
 		fmt.println("Run with '-define:SHOW_TREE=true' to print the tree.")

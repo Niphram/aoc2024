@@ -1,0 +1,37 @@
+{
+  // See https://go.microsoft.com/fwlink/?LinkId=733558
+  // for the documentation about the tasks.json format
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "shell",
+      "label": "compile-debug",
+      "command": "odin build ${workspaceFolder}/${relativeFileDirname} -debug -out:${workspaceFolder}/bin/${relativeFileDirname}",
+      "dependsOn": "_make_bin_directory",
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "silent",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": true,
+        "clear": false
+      }
+    },
+    {
+      "label": "_make_bin_directory",
+      "type": "shell",
+      "command": "mkdir -p ${workspaceFolder}/bin",
+      "problemMatcher": [],
+      "hide": true,
+      "presentation": {
+        "echo": true,
+        "reveal": "silent",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": true,
+        "clear": false
+      }
+    }
+  ]
+}

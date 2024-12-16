@@ -4,8 +4,8 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "type": "shell",
       "label": "compile-debug",
+      "type": "shell",
       "command": "odin build ${workspaceFolder}/${relativeFileDirname} -debug -out:${workspaceFolder}/bin/${relativeFileDirname}",
       "dependsOn": "_make_bin_directory",
       "problemMatcher": [],
@@ -16,6 +16,39 @@
         "panel": "shared",
         "showReuseMessage": true,
         "clear": false
+      }
+    },
+    {
+      "label": "Run active",
+      "type": "shell",
+      "command": "odin",
+      "args": [
+        "run",
+        "${workspaceFolder}/${relativeFileDirname}",
+        "-out:${workspaceFolder}/bin/${relativeFileDirname}"
+      ],
+      "dependsOn": "_make_bin_directory",
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "Test All",
+      "type": "shell",
+      "command": "odin",
+      "args": [
+        "test",
+        "${workspaceFolder}/tests",
+        "-all-packages",
+        "-out:${workspaceFolder}/bin/tests"
+      ],
+      "dependsOn": "_make_bin_directory",
+      "problemMatcher": [],
+      "group": {
+        "kind": "test",
+        "isDefault": true
       }
     },
     {

@@ -22,3 +22,7 @@ product :: proc(numbers: []int) -> (product := 1) {
 	for n in numbers do product *= n
 	return
 }
+
+pow :: proc(x, power: int) -> int {
+	return int(math.pow(f64(x), f64(power)))
+}

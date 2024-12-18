@@ -99,14 +99,13 @@ part_1 :: proc(input: string) -> (result: string) {
 	outputs := vm_run(vm)
 	defer delete(outputs)
 
-	// Hacky way to return the outputs as a comma seperated list
-	// Caller is responsible for deleting this string
-	output_string := make([]u8, len(outputs) * 2 - 1)
-	slice.fill(output_string, ',')
+	b := strings.builder_init(&strings.Builder{})
+	for o, i in outputs {
+		if i != 0 do strings.write_rune(b, ',')
+		strings.write_int(b, o)
+	}
 
-	for o, i in outputs do output_string[i * 2] = u8(o) + '0'
-
-	return transmute(string)output_string
+	return string(b.buf[:])
 }
 
 part_2 :: proc(input: string) -> (result: int) {
@@ -154,7 +153,8 @@ part_2 :: proc(input: string) -> (result: int) {
 }
 
 main :: proc() {
-	utils.aoc_main(part_1, part_2)
+	part1_result, _ := utils.aoc_main(part_1, part_2)
+	delete(part1_result)
 }
 
 EXAMPLE_1: string : `Register A: 729

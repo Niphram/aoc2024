@@ -1,8 +1,5 @@
 package day_18
 
-import "core:fmt"
-import "core:slice"
-import "core:strconv"
 import "core:strings"
 import "core:testing"
 
@@ -22,87 +19,127 @@ parse_coords :: proc(s: string) -> (pos: Vec2i, ok := true) {
 	return
 }
 
-part_1 :: proc(input: string) -> (result: int) {
-	input := input
-
-	ROOM := Vec2i{70, 70}
+create_memory :: proc(space: Vec2i) -> grid.Grid(bool) {
+	memory_size := space + {1, 1}
 
 	memory := grid.Grid(bool) {
-		width  = ROOM.x + 1,
-		height = ROOM.y + 1,
-		bytes  = make([]bool, (ROOM.x + 1) * (ROOM.y + 1)),
+		width  = memory_size.x,
+		height = memory_size.y,
+		bytes  = make([]bool, memory_size.x * memory_size.y),
 	}
+
+	return memory
+}
+
+corrupt_memory_iterator :: proc(
+	memory: grid.Grid(bool),
+	input: ^string,
+) -> (
+	pos: Vec2i,
+	ok := true,
+) {
+	line := strings.split_lines_iterator(input) or_return
+	pos = parse_coords(line) or_return
+	grid.set(memory, pos, true)
+
+	return
+}
+
+part_1 :: proc(input: string, space: Vec2i, iterations: int) -> (result: int) {
+	input := input
+
+	memory := create_memory(space)
 	defer delete(memory.bytes)
 
-	fallen := 0
-	for line in strings.split_lines_iterator(&input) {
-		if fallen >= 1024 do break
-		fallen += 1
-
-		pos := parse_coords(line) or_continue
-		grid.set(memory, pos, true)
+	for _ in 0 ..< iterations {
+		corrupt_memory_iterator(memory, &input) or_break
 	}
 
-	shortest_path := a_star_exhaustive(memory, {0, 0}, ROOM)
+	shortest_path := a_star(memory, {0, 0}, space)
 
 	return shortest_path
 }
 
-part_2 :: proc(input: string) -> (result: string) {
+part_2 :: proc(input: string, space: Vec2i, skip_iterations: int) -> (result: string) {
 	input := input
 
-	ROOM := Vec2i{70, 70}
+	b := strings.builder_init_len_cap(&strings.Builder{}, 0, 5)
 
-	memory := grid.Grid(bool) {
-		width  = ROOM.x + 1,
-		height = ROOM.y + 1,
-		bytes  = make([]bool, (ROOM.x + 1) * (ROOM.y + 1)),
-	}
+	memory := create_memory(space)
 	defer delete(memory.bytes)
 
-	// Very naive implementation, but still computes in under a minute on this old laptop (<13sec when compiling an -o:speed build)
-	for line in strings.split_lines_iterator(&input) {
-		pos := parse_coords(line) or_continue
-		grid.set(memory, pos, true)
+	// Skip the iterations from part 1. We already know there is still a path
+	for _ in 0 ..< skip_iterations {
+		corrupt_memory_iterator(memory, &input) or_break
+	}
 
-		lowest_cost := a_star_exhaustive(memory, {0, 0}, ROOM)
-
-		if lowest_cost == max(int) {
-			fmt.println(pos)
-
-			b :=
-				strings.builder_init_len(&strings.Builder{}, 5) or_else panic(
-					"Could not initialize string builder",
-				)
-
+	// Just recalculate the shortest distance after every corrupted byte. Good enough
+	for pos in corrupt_memory_iterator(memory, &input) {
+		// No path was found
+		if a_star(memory, {0, 0}, space) == max(int) {
 			strings.write_int(b, pos.x)
 			strings.write_rune(b, ',')
 			strings.write_int(b, pos.y)
 
-			return cast(string)b.buf[:]
+			break
 		}
 	}
 
-	return ""
+	return string(b.buf[:])
 }
 
 main :: proc() {
-	utils.aoc_main(part_1, part_2)
+	MEMORY_SPACE :: Vec2i{70, 70}
+	ITERATIONS :: 1024
+
+	part1_wrapper :: proc(input: string) -> int {
+		return part_1(input, MEMORY_SPACE, ITERATIONS)
+	}
+
+	part2_wrapper :: proc(input: string) -> string {
+		return part_2(input, MEMORY_SPACE, ITERATIONS)
+	}
+
+	part1_result, part2_result := utils.aoc_main(part1_wrapper, part2_wrapper)
+	delete(part2_result)
 }
 
-EXAMPLE_1: string : ``
+EXAMPLE_INPUT: string : `5,4
+4,2
+4,5
+3,0
+2,1
+6,3
+2,4
+1,5
+0,6
+3,3
+2,6
+5,1
+1,2
+5,5
+2,5
+6,5
+1,4
+0,4
+6,4
+1,1
+6,1
+1,0
+0,5
+1,6
+2,0
+`
 
-
-EXAMPLE_2: string : ``
-
-// TODO: Adjust tests
 
 @(test)
 part1_test :: proc(t: ^testing.T) {
-	testing.expect_value(t, part_1(EXAMPLE_1), 140)
+	testing.expect_value(t, part_1(EXAMPLE_INPUT, {6, 6}, 12), 22)
 }
 
 @(test)
 part2_test :: proc(t: ^testing.T) {
-	testing.expect_value(t, part_2(EXAMPLE_2), "")
+	result := part_2(EXAMPLE_INPUT, {6, 6}, 12)
+	defer delete(result)
+	testing.expect_value(t, result, "6,1")
 }

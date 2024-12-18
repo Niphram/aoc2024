@@ -1,6 +1,5 @@
 package utils
 
-import "base:intrinsics"
 import "core:flags"
 import "core:fmt"
 import "core:os"
@@ -22,8 +21,7 @@ aoc_main :: proc(
 ) -> (
 	part1_result: AR,
 	part2_result: BR,
-) where (intrinsics.type_is_string(AR) || intrinsics.type_is_numeric(AR)) &&
-	(intrinsics.type_is_string(BR) || intrinsics.type_is_numeric(BR)) {
+) {
 	directory := filepath.base(filepath.dir(loc.file_path))
 	assert(strings.has_prefix(directory, "day_"), "Directory needs to start with 'day_'")
 	day := strconv.parse_int(directory[4:], 10) or_else panic("Could not parse day")
@@ -60,10 +58,6 @@ aoc_main :: proc(
 	}
 
 	print_aoc_results(day, part1_result, part2_result, part1_duration, part2_duration)
-
-	// Find a better solution?
-	when intrinsics.type_is_string(AR) do defer delete(part1_result)
-	when intrinsics.type_is_string(BR) do defer delete(part2_result)
 
 	return
 }

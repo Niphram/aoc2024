@@ -15,9 +15,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Odin
-        uses: laytan/setup-odin@v2.7.0
+        uses: laytan/setup-odin@v2.8.0
         with:
-          release: dev-2024-11
+          release: latest
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run tests

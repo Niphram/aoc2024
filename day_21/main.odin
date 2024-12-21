@@ -14,62 +14,81 @@ sa_len :: small_array.len
 
 Vec2i :: [2]int
 
-Direction := #sparse[?]Vec2i {
-	'^' = {0, -1},
-	'v' = {0, 1},
-	'<' = {-1, 0},
-	'>' = {1, 0},
+Button :: enum rune {
+	Empty    = ' ',
+	Activate = 'A',
+	Zero     = '0',
+	One      = '1',
+	Two      = '2',
+	Three    = '3',
+	Four     = '4',
+	Five     = '5',
+	Six      = '6',
+	Seven    = '7',
+	Eight    = '8',
+	Nine     = '9',
+	Up       = '^',
+	Left     = '<',
+	Down     = 'v',
+	Right    = '>',
+}
+
+Direction := #partial #sparse[Button]Vec2i {
+	.Up    = {0, -1},
+	.Down  = {0, 1},
+	.Left  = {-1, 0},
+	.Right = {1, 0},
 }
 
 // The positions of the buttons.
 // Both keypad types are overlayed, so the activate-button and the empty space are in the same positions
-Keypad := #sparse[?]Vec2i {
-	'7' = {0, 0},
-	'8' = {1, 0},
-	'9' = {2, 0},
-	'4' = {0, 1},
-	'5' = {1, 1},
-	'6' = {2, 1},
-	'1' = {0, 2},
-	'2' = {1, 2},
-	'3' = {2, 2},
-	'0' = {1, 3},
-	'^' = {1, 3},
-	'<' = {0, 4},
-	'v' = {1, 4},
-	'>' = {2, 4},
-	'A' = {2, 3},
-	' ' = {0, 3},
+ButtonPositions := #sparse[Button]Vec2i {
+	.Seven    = {0, 0},
+	.Eight    = {1, 0},
+	.Nine     = {2, 0},
+	.Four     = {0, 1},
+	.Five     = {1, 1},
+	.Six      = {2, 1},
+	.One      = {0, 2},
+	.Two      = {1, 2},
+	.Three    = {2, 2},
+	.Zero     = {1, 3},
+	.Up       = {1, 3},
+	.Left     = {0, 4},
+	.Down     = {1, 4},
+	.Right    = {2, 4},
+	.Activate = {2, 3},
+	.Empty    = {0, 3},
 }
 
 // Using stack-allocated arrays for easy of copying.
 // The lengths are the absolute minimum
-ButtonSequence :: small_array.Small_Array(6, u8) // Going from A to 7 will produce 5 directional presses + one A press
+ButtonSequence :: small_array.Small_Array(6, Button) // Going from A to 7 will produce 5 directional presses + one A press
 Moveset :: small_array.Small_Array(9, ButtonSequence) // There are 9 distinct sequences to get from A to 7
 
 // Find all possible moves to get from button a to b.
 // Ignores all paths that would cross the empty space
-find_possible_movesets :: proc(start, end: Vec2i) -> Moveset {
-	delta := end - start
+find_possible_movesets :: proc(a, b: Button) -> Moveset {
+	delta := ButtonPositions[b] - ButtonPositions[a]
 
 	// Build a sequence of directional button presses
 	dir_sequence: ButtonSequence
 
 	if delta.x < 0 {
-		for _ in 0 ..< -delta.x do sa_append(&dir_sequence, '<')
+		for _ in 0 ..< -delta.x do sa_append(&dir_sequence, Button.Left)
 	} else {
-		for _ in 0 ..< delta.x do sa_append(&dir_sequence, '>')
+		for _ in 0 ..< delta.x do sa_append(&dir_sequence, Button.Right)
 	}
 
 	if delta.y < 0 {
-		for _ in 0 ..< -delta.y do sa_append(&dir_sequence, '^')
+		for _ in 0 ..< -delta.y do sa_append(&dir_sequence, Button.Up)
 	} else {
-		for _ in 0 ..< delta.y do sa_append(&dir_sequence, 'v')
+		for _ in 0 ..< delta.y do sa_append(&dir_sequence, Button.Down)
 	}
 
 	// No need to move, just return a single moveset with 'A'
 	if sa_len(dir_sequence) == 0 {
-		activate_sequence := ButtonSequence{{0 = 'A'}, 1}
+		activate_sequence := ButtonSequence{{0 = Button.Activate}, 1}
 		return Moveset{{0 = activate_sequence}, 1}
 	}
 
@@ -81,15 +100,15 @@ find_possible_movesets :: proc(start, end: Vec2i) -> Moveset {
 
 	perm_loop: for slice.permute(&perm_iter) {
 		// Check if the sequence would enter the emtpy space
-		pos := start
+		pos := ButtonPositions[a]
 		for d in sa_slice(&dir_sequence) {
-			pos += Direction[d]
-			if pos == Keypad[' '] do continue perm_loop
+			pos += Direction[Button(d)]
+			if pos == ButtonPositions[Button.Empty] do continue perm_loop
 		}
 
 		// Finish every sequence with an 'A'
 		sequence_copy := dir_sequence
-		sa_append(&sequence_copy, 'A')
+		sa_append(&sequence_copy, Button.Activate)
 
 		// Add it to the moveset
 		if !slice.contains(sa_slice(&moveset), sequence_copy) {
@@ -109,39 +128,42 @@ Cache :: map[CacheKey]int
 
 find_min_length :: proc(
 	input_sequence: ButtonSequence,
-	limit: int,
+	middle_robots: int,
 	cache: ^Cache,
 	depth := 0,
 ) -> (
 	length: int,
 ) {
 	// Check the cache
-	cache_key := CacheKey{input_sequence, limit, depth}
+	cache_key := CacheKey{input_sequence, middle_robots, depth}
 	if cache_key in cache do return cache[cache_key]
 
 	input_sequence := input_sequence
 
 	// Start on the activate button
-	cur := Keypad['A']
-	for r in sa_slice(&input_sequence) {
-		next_cur := Keypad[r]
+	cur_button := Button.Activate
+	for b in sa_slice(&input_sequence) {
+		next_button := Button(b)
 
 		// Find all movesets
-		moveset := find_possible_movesets(cur, next_cur)
+		moveset := find_possible_movesets(cur_button, next_button)
 
-		if depth == limit {
+		if depth == middle_robots {
 			// If we've reached our recursion limit, just use the length of the first sequence
 			length += sa_len(small_array.get(moveset, 0))
 		} else {
 			// For every sequence in the moveset, recursively find the shortest sequence
 			shortest := max(int)
 			for sequence in sa_slice(&moveset) {
-				shortest = min(shortest, find_min_length(sequence, limit, cache, depth + 1))
+				shortest = min(
+					shortest,
+					find_min_length(sequence, middle_robots, cache, depth + 1),
+				)
 			}
 			length += shortest
 		}
 
-		cur = next_cur
+		cur_button = next_button
 	}
 
 	cache[cache_key] = length
@@ -157,10 +179,10 @@ sum_complexities :: proc(input: string, middle_robots: int) -> (sum: int) {
 	for line in strings.split_lines_iterator(&input) {
 		line := line
 
-		// Build sequence from string input (assumes the string only contains valid characters)
+		// Build sequence from string input
 		sequence: ButtonSequence
-		for button in transmute([]u8)line {
-			sa_append(&sequence, button)
+		for button in line {
+			sa_append(&sequence, Button(button))
 		}
 
 		// Find the minimum input length

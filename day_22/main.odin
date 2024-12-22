@@ -1,17 +1,31 @@
 package day_22
 
+import "core:container/bit_array"
+import "core:slice"
 import "core:strconv"
 import "core:strings"
 import "core:testing"
 
 import "../utils"
 
-// Moves all the values to the left (dropping the first element) and sets the value at the end
-shift_in :: proc(buffer: ^[$N]$T, val: T) {
-	for i in 0 ..< N - 1 {
-		buffer[i] = buffer[i + 1]
+RingArray :: struct($N: int, $T: typeid) {
+	buf: [N]T,
+	ptr: int,
+}
+
+ring_append :: proc(ring: ^RingArray($N, $T), value: T) {
+	ring.buf[ring.ptr] = value
+	ring.ptr = (ring.ptr + 1) % N
+}
+
+// Packs the values into the minimum space
+ring_pack :: proc(ring: RingArray($N, $T), min, max: int) -> (result: int) {
+	for i in 0 ..< N {
+		result *= max - min
+		result += ring.buf[(i + ring.ptr) % N] - min
 	}
-	buffer[N - 1] = val
+
+	return
 }
 
 // Produces the next secret by applying the rules
@@ -50,23 +64,27 @@ part_1 :: proc(input: string) -> (result: int) {
 
 part_2 :: proc(input: string) -> (result := min(int)) {
 	ITERATIONS :: 2000
-	PRICE_HISTORY :: 4
+	PRICE_HISTORY_LENGTH :: 4
+	PriceHistory :: RingArray(PRICE_HISTORY_LENGTH, int)
 
-	PriceHistory :: [PRICE_HISTORY]int
+	// Sequences are 4 "digits" of -9 to 9, so in total 19**4
+	PossibleSequences := utils.pow(19, PRICE_HISTORY_LENGTH)
 
 	input := input
 
 	// Keep track of the amount of bananas each sequence produces
-	bananas_by_sequence := make(map[[4]int]int)
+	// Uses the packed integer of the sequence as the index
+	bananas_by_sequence := make([]int, PossibleSequences)
 	defer delete(bananas_by_sequence)
 
 	// Keep track of the price-histories the monkey has seen
-	seen_changes := make(map[PriceHistory]struct {})
-	defer delete(seen_changes)
+	// Uses the packed integer of the sequence as the index
+	seen_sequences := bit_array.create(PossibleSequences)
+	defer bit_array.destroy(seen_sequences)
 
 	for secret_string in strings.split_lines_iterator(&input) {
 		// Clear the seen changes (small performance improvement instead of re-creating the map for every input)
-		clear(&seen_changes)
+		bit_array.clear(seen_sequences)
 
 		secret := strconv.parse_int(secret_string, 10) or_else panic("Input is not a number")
 
@@ -74,26 +92,25 @@ part_2 :: proc(input: string) -> (result := min(int)) {
 
 		for i in 0 ..< ITERATIONS {
 			next := next_secret(secret)
-			shift_in(&price_changes, (next % 10) - (secret % 10))
+			ring_append(&price_changes, (next % 10) - (secret % 10))
 			secret = next
 
 			// Wait until the price-history is filled
-			if i >= PRICE_HISTORY {
-				// Check if the monkey has already seen this price history
-				if price_changes in seen_changes do continue
-				seen_changes[price_changes] = {}
+			if i >= PRICE_HISTORY_LENGTH {
+				packed := ring_pack(price_changes, -9, +9)
 
-				bananas_by_sequence[price_changes] += secret % 10
+				// Check if the monkey has already seen this price history
+				// Unsafe is fine here
+				if bit_array.unsafe_get(seen_sequences, packed) do continue
+				bit_array.unsafe_set(seen_sequences, packed)
+
+				bananas_by_sequence[packed] += secret % 10
 			}
 		}
 	}
 
 	// Find the sequence that produced the most bananas
-	for _, b in bananas_by_sequence {
-		result = max(result, b)
-	}
-
-	return
+	return slice.max(bananas_by_sequence[:])
 }
 
 main :: proc() {

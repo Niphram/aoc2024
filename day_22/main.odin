@@ -1,64 +1,42 @@
 package day_22
 
-import "core:container/small_array"
-import "core:fmt"
-import "core:slice"
 import "core:strconv"
 import "core:strings"
 import "core:testing"
 
-import "../parse"
 import "../utils"
 
-RingArray :: struct($L: int, $T: typeid) {
-	data: [L]T,
-	ptr:  int,
-}
-
-ring_push :: proc(ring: ^RingArray($N, $T), val: T) {
-	ring.data[ring.ptr] = val
-	ring.ptr += 1
-	ring.ptr %= N
-}
-
-ring_compare :: proc(ring: RingArray($N, $T), values: []T) -> bool {
-	for v, i in values {
-		if v != ring.data[(ring.ptr + i) % N] do return false
+// Moves all the values to the left (dropping the first element) and sets the value at the end
+shift_in :: proc(buffer: ^[$N]$T, val: T) {
+	for i in 0 ..< N - 1 {
+		buffer[i] = buffer[i + 1]
 	}
-
-	return true
+	buffer[N - 1] = val
 }
 
-ring_to_slice :: proc(ring: RingArray($N, $T)) -> [N]T {
-	out: [N]T
+// Produces the next secret by applying the rules
+next_secret :: proc(secret: int) -> int {
+	PRUNE :: 16777216
 
-	for i in 0 ..< N {
-		out[i] = ring.data[(ring.ptr + i) % N]
-	}
+	secret := secret
 
-	return out
-}
+	secret ~= secret * 64
+	secret %= PRUNE
 
-next_secret :: proc(previous: int) -> int {
-	previous := previous
+	secret ~= secret / 32
+	secret %= PRUNE
 
-	previous ~= previous * 64
-	previous %= 16777216
+	secret ~= secret * 2048
+	secret %= PRUNE
 
-	previous ~= previous / 32
-	previous %= 16777216
-
-	previous ~= previous * 2048
-	previous %= 16777216
-
-	return previous
+	return secret
 }
 
 part_1 :: proc(input: string) -> (result: int) {
 	input := input
 
-	input_loop: for secret_string in strings.split_lines_iterator(&input) {
-		secret := strconv.parse_int(secret_string, 10) or_continue
+	for secret_string in strings.split_lines_iterator(&input) {
+		secret := strconv.parse_int(secret_string, 10) or_else panic("Input is not a number")
 
 		for _ in 0 ..< 2000 {
 			secret = next_secret(secret)
@@ -70,46 +48,52 @@ part_1 :: proc(input: string) -> (result: int) {
 	return
 }
 
-part_2 :: proc(input: string) -> (result: int) {
-	input := input
-
+part_2 :: proc(input: string) -> (result := min(int)) {
 	ITERATIONS :: 2000
 	PRICE_HISTORY :: 4
 
+	PriceHistory :: [PRICE_HISTORY]int
+
+	input := input
+
 	// Keep track of the amount of bananas each sequence produces
-	bananas := make(map[[4]int]int)
-	defer delete(bananas)
+	bananas_by_sequence := make(map[[4]int]int)
+	defer delete(bananas_by_sequence)
+
+	// Keep track of the price-histories the monkey has seen
+	seen_changes := make(map[PriceHistory]struct {})
+	defer delete(seen_changes)
 
 	for secret_string in strings.split_lines_iterator(&input) {
-		secret := strconv.parse_int(secret_string, 10) or_else panic("INput is not a number")
+		// Clear the seen changes (small performance improvement instead of re-creating the map for every input)
+		clear(&seen_changes)
 
-		price_changes: RingArray(PRICE_HISTORY, int)
+		secret := strconv.parse_int(secret_string, 10) or_else panic("Input is not a number")
 
-		seen_changes := make(map[[PRICE_HISTORY]int]struct {})
-		defer delete(seen_changes)
+		price_changes: PriceHistory
 
 		for i in 0 ..< ITERATIONS {
 			next := next_secret(secret)
-			ring_push(&price_changes, (next % 10) - (secret % 10))
+			shift_in(&price_changes, (next % 10) - (secret % 10))
 			secret = next
 
-			if i >= 4 {
-				changes := ring_to_slice(price_changes)
-				if changes in seen_changes do continue
-				seen_changes[changes] = {}
+			// Wait until the price-history is filled
+			if i >= PRICE_HISTORY {
+				// Check if the monkey has already seen this price history
+				if price_changes in seen_changes do continue
+				seen_changes[price_changes] = {}
 
-				bananas[changes] += secret % 10
+				bananas_by_sequence[price_changes] += secret % 10
 			}
 		}
 	}
 
-	// Find the most bananas
-	max_bananas := min(int)
-	for _, v in bananas {
-		if v > max_bananas do max_bananas = v
+	// Find the sequence that produced the most bananas
+	for _, b in bananas_by_sequence {
+		result = max(result, b)
 	}
 
-	return max_bananas
+	return
 }
 
 main :: proc() {

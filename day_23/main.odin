@@ -1,10 +1,5 @@
 package day_23
 
-import "core:container/bit_array"
-import "core:fmt"
-import "core:math"
-import "core:slice"
-import "core:strconv"
 import "core:strings"
 import "core:testing"
 
@@ -60,55 +55,52 @@ parse_input_graph :: proc(input: string) -> (graph: Graph) {
 
 }
 
-dfs :: proc(
-	graph: ^Graph,
-	marked: ^small_bitset.BitSet(NODE_COUNT),
-	n: uint,
-	vert: uint,
-	start: uint,
-) -> int {
-	small_bitset.set(marked, vert)
+count_networks :: proc(graph: ^Graph, n: uint) -> int {
+	// recursively traverses the graph
+	dfs :: proc(
+		graph: ^Graph,
+		marked: ^small_bitset.BitSet(NODE_COUNT),
+		depth, node, start: uint,
+	) -> (
+		count: int,
+	) {
+		small_bitset.set(marked, node)
 
-	if n == 0 {
-		small_bitset.unset(marked, vert)
-
-		if small_bitset.get(graph[vert], start) {
-			return 1
-		} else {
-			return 0
+		if depth == 0 {
+			small_bitset.unset(marked, node)
+			return 1 if small_bitset.get(graph[node], start) else 0
 		}
+
+		for i in 0 ..< uint(NODE_COUNT) {
+			if !small_bitset.get(marked^, i) && small_bitset.get(graph[node], i) {
+				count += dfs(graph, marked, depth - 1, i, start)
+			}
+
+			small_bitset.unset(marked, node)
+		}
+
+		return count
 	}
 
 	count := 0
 
-	for i in 0 ..< uint(NODE_COUNT) {
-		if !small_bitset.get(marked^, i) && small_bitset.get(graph[vert], i) {
-			count += dfs(graph, marked, n - 1, i, start)
-		}
-
-		small_bitset.unset(marked, vert)
-	}
-
-	return count
-}
-
-count_networks :: proc(graph: ^Graph, n: uint) -> int {
+	// Marked will be used to keep track of nodes that are already used
 	marked: small_bitset.BitSet(NODE_COUNT)
 
-	count := 0
+	for &a_neighbors, identifier in graph {
+		identifier := uint(identifier)
 
-	for i in 0 ..< NODE_COUNT - (n - 1) {
-		if i / 26 == 't' - 'a' {
-			count += dfs(graph, &marked, n - 1, i, i)
-			small_bitset.set(&marked, uint(i))
-		}
+		// Skip this starting-node if it doesn't start with a 't'
+		if unpack_identifier(identifier)[0] != 't' do continue
 
+		count += dfs(graph, &marked, n - 1, identifier, identifier)
+		small_bitset.set(&marked, identifier)
 	}
 
 	return count / 2
 }
 
-find_clique :: proc(graph: ^Graph) -> small_bitset.BitSet(NODE_COUNT) {
+find_largest_clique :: proc(graph: ^Graph) -> small_bitset.BitSet(NODE_COUNT) {
 	best_clique: small_bitset.BitSet(NODE_COUNT)
 
 	for &connections, i in graph {
@@ -144,13 +136,12 @@ part_1 :: proc(input: string) -> (result: int) {
 part_2 :: proc(input: string) -> (result: string) {
 	graph := parse_input_graph(input)
 
-	b := strings.builder_make()
-
-	biggest_clique := find_clique(&graph)
+	largest_clique := find_largest_clique(&graph)
 
 	// Build output string
-	clique_iter := small_bitset.make_iterator(&biggest_clique)
-	for identifier in small_bitset.iterate_by_set(&clique_iter) {
+	b := strings.builder_make()
+	node_iter := small_bitset.make_iterator(&largest_clique)
+	for identifier in small_bitset.iterate_by_set(&node_iter) {
 		result := unpack_identifier(uint(identifier))
 
 		strings.write_string(&b, transmute(string)result[:])

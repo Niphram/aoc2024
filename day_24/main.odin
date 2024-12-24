@@ -1,8 +1,10 @@
 package day_24
 
+import "core:container/small_array"
 import "core:container/topological_sort"
 import "core:fmt"
 import "core:math"
+import "core:slice"
 import "core:strings"
 import "core:testing"
 
@@ -114,22 +116,12 @@ evaluate_net :: proc(sorted_wires: []Wire) -> map[string]bool {
 	return wire_states
 }
 
-calculate_number :: proc(wire_states: map[string]bool, wire_prefix: rune) -> (result: int) {
-	named_wires: map[int]bool
-	defer delete(named_wires)
+calculate_number :: proc(wire_states: map[string]bool, wire_prefix: u8) -> (result: int) {
+	for i in 0 ..< u8(100) {
+		i := 99 - i
+		wire_name := string([]u8{wire_prefix, i / 10 + '0', i % 10 + '0'})
 
-	for k, v in wire_states {
-		if k[0] == u8(wire_prefix) {
-			n := k[1:]
-
-			wire_index := parse.read_number(&n) or_else panic("?!")
-			named_wires[wire_index] = v
-		}
-	}
-
-	for i := 99; i >= 0; i -= 1 {
-		if value, ok := named_wires[i]; ok {
-
+		if value, ok := wire_states[wire_name]; ok {
 			result <<= 1
 			result |= 1 if value else 0
 		}
@@ -146,9 +138,12 @@ part_1 :: proc(input: string) -> (result: int) {
 	defer topological_sort.destroy(&sorter)
 
 	sorted, cycled := topological_sort.sort(&sorter)
-	delete(cycled)
+
 	defer delete(sorted)
-	assert(len(cycled) == 0)
+	defer delete(cycled)
+
+	// there should be no cycles in the net 
+	assert(len(cycled) == 0, "Cycles detected in input!")
 
 	wire_states := evaluate_net(sorted[:])
 	defer delete(wire_states)
@@ -156,193 +151,68 @@ part_1 :: proc(input: string) -> (result: int) {
 	return calculate_number(wire_states, 'z')
 }
 
-part_2 :: proc(input: string) -> (result: int) {
+part_2 :: proc(input: string) -> (result: string) {
 	wires := parse_wires(input) or_else panic("Could not parse input")
 	defer delete(wires)
 
-	swap_wires :: proc(wires: ^map[string]Wire, a, b: string) {
-		wire_a := wires[a]
-		wire_b := wires[b]
+	highest_z := "z45"
 
-		wire_a.name = b
-		wire_b.name = a
+	wrong: [dynamic]string
+	defer delete(wrong)
 
-		wires[a] = wire_b
-		wires[b] = wire_a
-	}
-
-	// swap_wires(&wires, "z22", "hwq")
-	// swap_wires(&wires, "thm", "z08")
-
-	// z08 can be swapped anywhere, no dependents
-	//swap_wires(&wires, "z22", "hwq")
-	// z08 can be swapped anywhere, no dependents
-	//swap_wires(&wires, "z22", "hwq")
-	// z29 can be swapped anywhere, no dependents
-	//swap_wires(&wires, "z29", "hwq")
-
-	// z29 needs to depend directly on dcf -> z29 ~ rpq?
-
-
-	// BEST GUESSES
-	swap_wires(&wires, "z08", "thm")
-	swap_wires(&wires, "z22", "hwq")
-	swap_wires(&wires, "z29", "gbs")
-	swap_wires(&wires, "wss", "wrm")
-
-	/*
-	gbs,hwq,thm,wrm,wss,z08,z22,z29
-	*/
-
-	// z13 <- cqb pbd
-
-	// OR -> Z-XOR && !Z-AND
-
-	// vsn
-	// rhk -> z01
-	// rhk -> tpp -> mbr -> z02
-	// rhk -> tpp -> mbr -> jdj -> rsm -> z03
-	// rhk -> tpp -> mbr -> jdj -> rsm -> qwg -> ggh -> z04
-	// rhk -> tpp -> mbr -> jdj -> rsm -> qwg -> ggh -> spd -> pvb
-
-
-	// hwq -> fjs -> z23
-	// hwq -> fjs -> fdc -> qbr -> z24
-	// hwq -> fjs -> fdc -> qbr -> pqq -> dwm -> z25
-	// hwq -> fjs -> fdc -> qbr -> pqq -> dwm -> rws -> fcn -> z26
-	// hwq -> fjs -> fdc -> qbr -> pqq -> dwm -> rws -> fcn -> tgg -> frj -> z27
-	// hwq -> fjs -> fdc -> qbr -> pqq -> dwm -> rws -> fcn -> tgg -> frj -> pgq -> bst -> z28
-	// hwq -> fjs -> fdc -> qbr -> pqq -> dwm -> rws -> fcn -> tgg -> frj -> pgq -> bst -> pdq -> dcf -> rpq -> z29
-	// hwq -> fjs -> fdc -> qbr -> pqq -> dwm -> rws -> fcn -> tgg -> frj -> pgq -> bst -> pdq -> dcf -> gbs -> z30
-	// hwq -> fjs -> fdc -> qbr -> pqq -> dwm -> rws -> fcn -> tgg -> frj -> pgq -> bst -> pdq -> dcf -> gbs -> dqf -> hvf -> z31
-	// hwq -> fjs -> fdc -> qbr -> pqq -> dwm -> rws -> fcn -> tgg -> frj -> pgq -> bst -> pdq -> dcf -> gbs -> dqf -> hvf -> wjp -> qvq -> z32
-	// hwq -> fjs -> fdc -> qbr -> pqq -> dwm -> rws -> fcn -> tgg -> frj -> pgq -> bst -> pdq -> dcf -> gbs -> dqf -> hvf -> wjp -> qvq -> bgq -> vng -> z33
-	// hwq -> fjs -> fdc -> qbr -> pqq -> dwm -> rws -> fcn -> tgg -> frj -> pgq -> bst -> pdq -> dcf -> gbs -> dqf -> hvf -> wjp -> qvq -> bgq -> vng -> vbf -> vkv -> z34
-	// hwq -> fjs -> fdc -> qbr -> pqq -> dwm -> rws -> fcn -> tgg -> frj -> pgq -> bst -> pdq -> dcf -> gbs -> dqf -> hvf -> wjp -> qvq -> bgq -> vng -> vbf -> vkv -> vsr -> jrp -> z35
-	// hwq -> fjs -> fdc -> qbr -> pqq -> dwm -> rws -> fcn -> tgg -> frj -> pgq -> bst -> pdq -> dcf -> gbs -> dqf -> hvf -> wjp -> qvq -> bgq -> vng -> vbf -> vkv -> vsr -> jrp -> psh -> fpc -> z36
-	// hwq -> fjs -> fdc -> qbr -> pqq -> dwm -> rws -> fcn -> tgg -> frj -> pgq -> bst -> pdq -> dcf -> gbs -> dqf -> hvf -> wjp -> qvq -> bgq -> vng -> vbf -> vkv -> vsr -> jrp -> psh -> fpc -> hdw...
-
-	// 14, 15, 16, 17
-	// 29, 30, 31, 32, 33, 34, 35, 36
-
-	// z12 = ((gst AND (y11 XOR x11)) OR (y11 AND x11)) XOR (y12 XOR x12)
-
-	// c_0 = x_0 AND y_0
-	// z_0 = x_0 XOR y_0
-
-	// z_i = x_i-1 XOR y_i-1 XOR c_i-1
-	// c_i = 
-
-	// x13 xor y13 -> 
-
-	// rmm -> z12
-	// rmm -> sft -> cqb -> z13
-	// rmm -> sft -> cqb -> vns -> hgw -> z14
-	// rmm -> sft -> cqb -> vns -> hgw -> cgv -> mjj
-	// pbd -> z13
-	// pbd -> vns -> hgw -> z14
-	// pbd -> vns -> hgw -> cgv -> mjj -> z15
-	// pbd -> vns -> hgw -> cgv -> mjj -> ntv
-
-	// Sanity checks for ripple carrier
+	// Find all the wrong gates
+	// This seems to work in general, but I'll clean this entire solution up... tomorrow.
 	for _, wire in wires {
+		if gate, ok := wire.value.(Gate); ok {
 
-		#partial switch value in wire.value {
-		case Gate:
-			#partial switch value.type {
+			// Result is z-wire but the gate is not XOR (except last bit)
+			if wire.name[0] == 'z' && gate.type != .XOR && wire.name != highest_z {
+				append(&wrong, wire.name)
+			}
 
-			case .XOR:
-				// Check 1: No XOR gates with x and y inputs can result in a z output (except x00 and y00)
-				if value.a[0] == 'x' ||
-				   value.a[0] == 'y' && value.b[0] == 'x' ||
-				   value.b[0] == 'y' {
+			// Gate is XOR but none of the inputs or output are z-wires
+			if gate.type == .XOR &&
+			   strings.index_any(wire.name, "xyz") != 0 &&
+			   strings.index_any(gate.a, "xyz") != 0 &&
+			   strings.index_any(gate.b, "xyz") != 0 {
+				append(&wrong, wire.name)
+			}
 
-					if wire.name[0] == 'z' && !(value.a[1:] == "00" && value.b[1:] == "00") {
-						fmt.printfln("Invalid XOR: %s XOR %s => %s", value.a, value.b, wire.name)
-					}
-
-				} else {
-					// Check 2: All other XOR gates have to output z
-					if wire.name[0] != 'z' {
-						fmt.printfln("Invalid XOR: %s XOR %s => %s", value.a, value.b, wire.name)
+			// AND gate (except the first x00&y00) and the result is used in an OR gate
+			if gate.type == .AND && (gate.a != "x00" && gate.b != "x00") {
+				for _, sub_wire in wires {
+					if sub_gate, ok := sub_wire.value.(Gate); ok {
+						if (wire.name == sub_gate.a || wire.name == sub_gate.b) &&
+						   sub_gate.type != .OR {
+							append(&wrong, wire.name)
+						}
 					}
 				}
 			}
 
-			if wire.name[0] == 'z' {
-				if value.type != .XOR && wire.name != "z45" {
-					fmt.printfln(
-						"Invalid Z-Output: %s %v %s => %s",
-						value.a,
-						value.type,
-						value.b,
-						wire.name,
-					)
+			// XOR gate and the result is not used in an OR gate
+			if gate.type == .XOR {
+				for _, sub_wire in wires {
+					if sub_gate, ok := sub_wire.value.(Gate); ok {
+						if (wire.name == sub_gate.a || wire.name == sub_gate.b) &&
+						   sub_gate.type == .OR {
+							append(&wrong, wire.name)
+						}
+					}
 				}
 			}
 		}
 	}
 
+	slice.sort(wrong[:])
+	wrong_unique := slice.unique(wrong[:])
 
-	sorter := make_net(wires)
-	defer topological_sort.destroy(&sorter)
-
-	sorted, cycled := topological_sort.sort(&sorter)
-	assert(len(cycled) == 0)
-
-	wire_states := evaluate_net(sorted[:])
-	defer delete(wire_states)
-
-	x_res := calculate_number(wire_states, 'x')
-	y_res := calculate_number(wire_states, 'y')
-	z_res := calculate_number(wire_states, 'z')
-
-	xy_sum := x_res + y_res
-
-	print_rec :: proc(node: string, wires: map[string]Wire) {
-		wire := wires[node] or_else panic("Not found")
-
-		switch value in wire.value {
-		case bool:
-		//fmt.println(wire.name)
-		case Gate:
-			fmt.println(wire.name, "depends on", value.a, value.type, value.b)
-			print_rec(value.a, wires)
-			print_rec(value.b, wires)
-		}
-	}
-
-	for i in 0 ..< uint(math.count_digits_of_base(z_res, 2)) {
-
-		mask := 1 << i
-
-		if xy_sum & mask != z_res & mask {
-
-			fmt.println("Invalid at", i)
-
-			i := i + 3
-
-			z_string := string([]u8{'z', u8(i / 10 + '0'), u8(i % 10 + '0')})
-
-			print_rec(z_string, wires)
-
-			break
-		}
-
-	}
-
-
-	fmt.printfln("% 50b", calculate_number(wire_states, 'x'))
-	fmt.printfln("+% 49b", calculate_number(wire_states, 'y'))
-	fmt.println()
-	fmt.printfln("=% 49b", calculate_number(wire_states, 'x') + calculate_number(wire_states, 'y'))
-	fmt.printfln("% 50b", calculate_number(wire_states, 'z'))
-
-	return calculate_number(wire_states, 'z')
+	return strings.join(wrong_unique, ",")
 }
 
 main :: proc() {
-	utils.aoc_main(part_1, part_2)
+	_, part2_result := utils.aoc_main(part_1, part_2)
+	delete(part2_result)
 }
 
 EXAMPLE_INPUT: string : `x00: 1

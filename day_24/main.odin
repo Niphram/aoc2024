@@ -162,6 +162,8 @@ part_2 :: proc(input: string) -> (result: string) {
 
 	// Find all the wrong gates
 	// This seems to work in general, but I'll clean this entire solution up... tomorrow.
+	// Addendum: This does not detect topological errors (switching two wires in the same gate-group, i.e. z20 <-> z34)
+	// My input doesn't include errors like that, by I don't know if this is the case in general
 	for _, wire in wires {
 		if gate, ok := wire.value.(Gate); ok {
 

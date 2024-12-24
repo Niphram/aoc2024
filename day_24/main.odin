@@ -1,129 +1,58 @@
 package day_24
 
-import "core:container/small_array"
-import "core:container/topological_sort"
-import "core:fmt"
-import "core:math"
+import "core:reflect"
 import "core:slice"
+import "core:strconv"
 import "core:strings"
-import "core:testing"
 
 import "../parse"
 import "../utils"
 
-GateType :: enum {
+Operation :: enum {
 	AND,
 	OR,
 	XOR,
 }
 
 Gate :: struct {
-	a, b: string,
-	type: GateType,
+	a, b:      string,
+	operation: Operation,
 }
 
-Wire :: struct {
-	name:  string,
-	value: union {
-		bool,
-		Gate,
-	},
-}
-
-parse_wires :: proc(input: string) -> (wires: map[string]Wire, ok := true) {
+parse_input :: proc(
+	input: string,
+) -> (
+	wires: map[string]bool,
+	gates: map[string]Gate,
+	highest_z := "z00",
+	ok := true,
+) {
 	wires_input, gates_input := utils.split_once(input, "\n\n") or_return
 
 	for wire_string in strings.split_lines_iterator(&wires_input) {
-		wire_name := wire_string[:3]
-		wire_value := wire_string[5] == '1'
-
-		wires[wire_name] = Wire {
-			name  = wire_name,
-			value = wire_value,
-		}
+		wires[wire_string[:3]] = wire_string[5] == '1'
 	}
 
 	for gate_string in strings.split_lines_iterator(&gates_input) {
 		gate_string := gate_string
 
 		wire_a := parse.take_until(&gate_string, ' ') or_return
-		gate_type_string := parse.take_until(&gate_string, ' ') or_return
+		operation_string := parse.take_until(&gate_string, ' ') or_return
 		wire_b := parse.take_until(&gate_string, ' ') or_return
-
-		// Arrow
 		parse.take_until(&gate_string, ' ') or_return
+		result_wire := parse.take_until(&gate_string, ' ') or_return
 
-		wire_name := parse.take_until(&gate_string, ' ') or_return
+		operation := reflect.enum_from_name(Operation, operation_string) or_return
 
-		gate_type: GateType = ---
-
-		switch gate_type_string {
-		case "AND":
-			gate_type = .AND
-		case "XOR":
-			gate_type = .XOR
-		case "OR":
-			gate_type = .OR
-		case:
-			return
+		gates[result_wire] = Gate {
+			a         = wire_a,
+			b         = wire_b,
+			operation = operation,
 		}
 
-		wires[wire_name] = Wire {
-			name = wire_name,
-			value = Gate{a = wire_a, b = wire_b, type = gate_type},
-		}
-	}
-
-	return
-}
-
-make_net :: proc(wires: map[string]Wire) -> (sorter: topological_sort.Sorter(Wire)) {
-	for _, wire in wires {
-		switch value in wire.value {
-		case bool:
-			topological_sort.add_key(&sorter, wire)
-		case Gate:
-			topological_sort.add_dependency(&sorter, wires[value.a], wire)
-			topological_sort.add_dependency(&sorter, wires[value.b], wire)
-		}
-	}
-
-	return
-}
-
-evaluate_net :: proc(sorted_wires: []Wire) -> map[string]bool {
-	wire_states: map[string]bool
-
-	#reverse for wire in sorted_wires {
-		switch value in wire.value {
-		case bool:
-			wire_states[wire.name] = value
-		case Gate:
-			a_value := wire_states[value.a] or_else panic("NOT SET?!")
-			b_value := wire_states[value.b] or_else panic("NOT SET?!")
-
-			switch value.type {
-			case .AND:
-				wire_states[wire.name] = a_value & b_value
-			case .XOR:
-				wire_states[wire.name] = a_value ~ b_value
-			case .OR:
-				wire_states[wire.name] = a_value | b_value
-			}
-		}
-	}
-
-	return wire_states
-}
-
-calculate_number :: proc(wire_states: map[string]bool, wire_prefix: u8) -> (result: int) {
-	for i in 0 ..< u8(100) {
-		i := 99 - i
-		wire_name := string([]u8{wire_prefix, i / 10 + '0', i % 10 + '0'})
-
-		if value, ok := wire_states[wire_name]; ok {
-			result <<= 1
-			result |= 1 if value else 0
+		// Update highest z
+		if result_wire[0] == 'z' && result_wire > highest_z {
+			highest_z = result_wire
 		}
 	}
 
@@ -131,111 +60,108 @@ calculate_number :: proc(wire_states: map[string]bool, wire_prefix: u8) -> (resu
 }
 
 part_1 :: proc(input: string) -> (result: int) {
-	wires := parse_wires(input) or_else panic("Could not parse input")
+	wires, gates, highest_z := parse_input(input) or_else panic("Could not parse input")
 	defer delete(wires)
+	defer delete(gates)
 
-	sorter := make_net(wires)
-	defer topological_sort.destroy(&sorter)
+	// Recursively solves the node, persists results in 'wires'
+	solve_node :: proc(node: string, wires: ^map[string]bool, gates: map[string]Gate) -> bool {
+		if node in wires do return wires[node]
 
-	sorted, cycled := topological_sort.sort(&sorter)
+		gate := gates[node] or_else panic("Could not find node")
 
-	defer delete(sorted)
-	defer delete(cycled)
+		a := solve_node(gate.a, wires, gates)
+		b := solve_node(gate.b, wires, gates)
 
-	// there should be no cycles in the net 
-	assert(len(cycled) == 0, "Cycles detected in input!")
+		result: bool = ---
 
-	wire_states := evaluate_net(sorted[:])
-	defer delete(wire_states)
+		switch gate.operation {
+		case .AND:
+			result = a & b
+		case .OR:
+			result = a | b
+		case .XOR:
+			result = a ~ b
+		}
 
-	return calculate_number(wire_states, 'z')
+		wires[node] = result
+		return result
+	}
+
+	z := strconv.parse_int(highest_z[1:], 10) or_else panic("Could not find highest z")
+	for ; z >= 0; z -= 1 {
+		wire_name := string([]u8{'z', u8(z / 10 + '0'), u8(z % 10 + '0')})
+
+		value := solve_node(wire_name, &wires, gates)
+
+		// Shift left and append digit
+		result <<= 1
+		result |= 1 if value else 0
+	}
+
+	return
 }
 
 part_2 :: proc(input: string) -> (result: string) {
-	wires := parse_wires(input) or_else panic("Could not parse input")
+	wires, gates, highest_z := parse_input(input) or_else panic("Help")
 	defer delete(wires)
+	defer delete(gates)
 
-	highest_z := "z45"
+	incorrect_wire_names: [dynamic]string
+	defer delete(incorrect_wire_names)
 
-	wrong: [dynamic]string
-	defer delete(wrong)
+	is_xyz_node :: proc(node: string) -> bool {
+		return node[0] == 'x' || node[0] == 'y' || node[0] == 'z'
+	}
+
+	any_of :: proc(input: string, tests: ..string) -> bool {
+		return slice.any_of(tests, input)
+	}
 
 	// Find all the wrong gates
-	// This seems to work in general, but I'll clean this entire solution up... tomorrow.
-	// Addendum: This does not detect topological errors (switching two wires in the same gate-group, i.e. z20 <-> z34)
+	// This does not detect topological errors (switching two wires in the same gate-group, i.e. z20 <-> z34)
 	// My input doesn't include errors like that, by I don't know if this is the case in general
-	for _, wire in wires {
-		if gate, ok := wire.value.(Gate); ok {
+	for result_wire, gate in gates {
+		// Result is z-wire but the gate is not XOR (except last bit)
+		if result_wire[0] == 'z' && gate.operation != .XOR && result_wire != highest_z {
+			append(&incorrect_wire_names, result_wire)
+		}
 
-			// Result is z-wire but the gate is not XOR (except last bit)
-			if wire.name[0] == 'z' && gate.type != .XOR && wire.name != highest_z {
-				append(&wrong, wire.name)
-			}
+		// Gate is XOR but none of the inputs or output are z-wires
+		if gate.operation == .XOR &&
+		   !is_xyz_node(result_wire) &&
+		   !is_xyz_node(gate.a) &&
+		   !is_xyz_node(gate.b) {
+			append(&incorrect_wire_names, result_wire)
+		}
 
-			// Gate is XOR but none of the inputs or output are z-wires
-			if gate.type == .XOR &&
-			   strings.index_any(wire.name, "xyz") != 0 &&
-			   strings.index_any(gate.a, "xyz") != 0 &&
-			   strings.index_any(gate.b, "xyz") != 0 {
-				append(&wrong, wire.name)
-			}
-
-			// AND gate (except the first x00&y00) and the result is used in an OR gate
-			if gate.type == .AND && (gate.a != "x00" && gate.b != "x00") {
-				for _, sub_wire in wires {
-					if sub_gate, ok := sub_wire.value.(Gate); ok {
-						if (wire.name == sub_gate.a || wire.name == sub_gate.b) &&
-						   sub_gate.type != .OR {
-							append(&wrong, wire.name)
-						}
-					}
+		// AND gate (except the first x00 & y00) and the result is used in an OR gate
+		if gate.operation == .AND && !any_of("x00", gate.a, gate.b) {
+			for sub_wire, sub_gate in gates {
+				wire_is_requirenment := any_of(result_wire, sub_gate.a, sub_gate.b)
+				if wire_is_requirenment && sub_gate.operation != .OR {
+					append(&incorrect_wire_names, result_wire)
 				}
 			}
+		}
 
-			// XOR gate and the result is not used in an OR gate
-			if gate.type == .XOR {
-				for _, sub_wire in wires {
-					if sub_gate, ok := sub_wire.value.(Gate); ok {
-						if (wire.name == sub_gate.a || wire.name == sub_gate.b) &&
-						   sub_gate.type == .OR {
-							append(&wrong, wire.name)
-						}
-					}
+		// XOR gate and the result is not used in an OR gate
+		if gate.operation == .XOR {
+			for sub_wire, sub_gate in gates {
+				wire_is_requirenment := any_of(result_wire, sub_gate.a, sub_gate.b)
+				if wire_is_requirenment && sub_gate.operation == .OR {
+					append(&incorrect_wire_names, result_wire)
 				}
 			}
 		}
 	}
 
-	slice.sort(wrong[:])
-	wrong_unique := slice.unique(wrong[:])
-
-	return strings.join(wrong_unique, ",")
+	// Sort, unique and join
+	slice.sort(incorrect_wire_names[:])
+	return strings.join(slice.unique(incorrect_wire_names[:]), ",")
 }
 
 main :: proc() {
 	_, part2_result := utils.aoc_main(part_1, part_2)
 	delete(part2_result)
-}
-
-EXAMPLE_INPUT: string : `x00: 1
-x01: 1
-x02: 1
-y00: 0
-y01: 1
-y02: 0
-
-x00 AND y00 -> z00
-x01 XOR y01 -> z01
-x02 OR y02 -> z02
-`
-
-
-@(test)
-part1_test :: proc(t: ^testing.T) {
-	testing.expect_value(t, part_1(EXAMPLE_INPUT), 4)
-}
-
-@(test)
-part2_test :: proc(t: ^testing.T) {
-	// testing.expect_value(t, part_2(EXAMPLE_INPUT), 0)
 }

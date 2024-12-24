@@ -29,6 +29,20 @@ take_prefix :: proc(s: ^string, substr: string) -> (result: string, ok := true) 
 	return
 }
 
+take_until :: proc(s: ^string, r: rune) -> (result: string, ok := true) {
+	rune_index := strings.index_rune(s^, r)
+
+	if rune_index == -1 {
+		result = s^
+		s^ = s[len(s^):]
+	} else {
+		result = s[:rune_index]
+		s^ = s[rune_index + 1:]
+	}
+
+	return
+}
+
 seek_after :: proc(s: ^string, substr: string) -> (result: string, ok: bool) {
 	if idx := strings.index(s^, substr); idx >= 0 {
 		ok = true
